@@ -32,7 +32,7 @@ void scale_kernel(cufftComplex *d_signal, unsigned int dim){
 __global__
 void max_kernel(float *d_in,float *d_max,int *mutex,unsigned int length){
     atomicExch(mutex,0);
-    __shared__ float sdata[tpb];
+    __shared__ float sdata[1024];
     unsigned int tid = threadIdx.x;
     unsigned int index = blockIdx.x*blockDim.x + threadIdx.x;
     unsigned int stride = blockDim.x*gridDim.x;

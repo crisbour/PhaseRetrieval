@@ -5,7 +5,6 @@
  *      Author: cristi
  */
 #include "algorithm.h"
-#include "max_min_kernel.h"
 
 
 OppBlocks::OppBlocks(int nx,int ny):nx(nx),ny(ny){
@@ -33,25 +32,26 @@ void OppBlocks::Decompose(cufftComplex *d_signal,float *d_amp,float *d_phase){
 	Decomp_kernel<<<(nx*ny+1023)/1024,1024>>>(d_signal,d_amp,d_phase,nx*ny);
 }
 void OppBlocks::Normalize(float *d_amp,float *d_min){
-	max_kernel<<<(nx*ny-1023)/1024,1024>>>(d_amp,d_min,nx*ny);
+	max_kernel<<<(nx*ny+1023),1024>>>(d_amp,d_min,d_mutex,nx*ny);
+	printf("Dimensions:(%d,%d)\n",ny,nx);
 }
 
 PhaseRetrieve::PhaseRetrieve(int nx, int ny, PR_Type type):OppBlocks(nx,ny){
-	InitGPU();
+	InitGPU(0);
 
 	//Host memory allocation
 	h_img=(cufftComplex*)malloc(nx*ny*sizeof(cufftComplex));
 	h_fimg=(cufftComplex*)malloc(nx*ny*sizeof(cufftComplex));
 	h_amp=(float*)malloc(nx*ny*sizeof(float));
-	h_min=(float*)malloc(1024*sizeof(float));
 	h_phase=(float*)malloc(nx*ny*sizeof(float));
 
 	//Device memory allocation
 	CUDA_CALL(cudaMalloc((void**)&d_img,nx*ny*sizeof(cufftComplex)));
 	CUDA_CALL(cudaMalloc((void**)&d_fimg,nx*ny*sizeof(cufftComplex)));
 	CUDA_CALL(cudaMalloc((void**)&d_amp,nx*ny*sizeof(float)));
-	CUDA_CALL(cudaMalloc((void**)&d_min,1024*sizeof(float)));
+	CUDA_CALL(cudaMalloc((void**)&d_min,sizeof(float)));
 	CUDA_CALL(cudaMalloc((void**)&d_phase,nx*ny*sizeof(float)));
+	CUDA_CALL(cudaMalloc((void**)&d_mutex,sizeof(int)));
 }
 
 PhaseRetrieve::~PhaseRetrieve(){
@@ -59,14 +59,12 @@ PhaseRetrieve::~PhaseRetrieve(){
 	free(h_amp); free(h_phase);
 	cudaFree(d_img);	cudaFree(d_fimg);
 	cudaFree(d_amp);	cudaFree(d_phase);
+	cudaFree(d_min);
 	printf("PhaseRetrieve destructed successfully!\n");
 }
-void PhaseRetrieve::InitGPU(){
-	//Initiate GPU
-	int device_id=0;	//GPU has id 0
+void PhaseRetrieve::InitGPU(int device_id){
 	int devCount;
     cudaGetDeviceCount(&devCount);	//number of GPUs available
-    PropertiesGPU(devCount);
 	if(device_id<devCount)		//check if there are enogh GPUs
         cudaSetDevice(device_id);
     else exit(1);
@@ -107,7 +105,11 @@ void PhaseRetrieve::Test(){
 	CUDA_CALL(cudaMemcpy(d_img,h_img,nx*ny*sizeof(cufftComplex),cudaMemcpyHostToDevice));
 
 	Decompose(d_img,d_amp,d_phase);
-	//Normalize(d_amp,d_min);
+	Compose(d_img,d_amp,d_phase);
+	Normalize(d_amp,d_min);
+	//printf("Let's see!\n");
+	//CUDA_CALL(cudaMemcpy(&h_min,d_min,sizeof(float),cudaMemcpyDeviceToHost));
+	printf("Max= %f\n",h_min);
 	for(int i=0;i<50;i++){
 		Obj_to_SLM(d_img,d_fimg);
 		SLM_To_Obj(d_fimg,d_img);

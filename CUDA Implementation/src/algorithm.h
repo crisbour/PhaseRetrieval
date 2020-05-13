@@ -14,6 +14,7 @@
 #include <cuda_runtime.h>
 #include <cuda.h>
 #include <cufft.h>
+#include "kernels.h"
 
 //Macros
 #define CUDA_CALL(x) do { if((x)!=cudaSuccess) { \
@@ -37,6 +38,7 @@ protected:
 	cufftHandle planFFT;
 	cufftResult error;
 	int nx,ny;
+	int *d_mutex;
 
 public:
 	OppBlocks(int nx,int ny);
@@ -60,17 +62,18 @@ protected:
 	cufftComplex *h_img;
 	cufftComplex *h_fimg;
 	float *h_amp;
-	float *h_min;
+	float h_min;
 	float *h_phase;
 	cufftComplex *d_img;
 	cufftComplex *d_fimg;
 	float *d_amp;
 	float *d_min;
 	float *d_phase;
+	int *d_mutex;
 public:
 	PhaseRetrieve(int nx, int ny, PR_Type type);
 	~PhaseRetrieve();
-	void InitGPUI();
+	void InitGPU(int device_id);
 	void Test();
 	void printComplex(cufftComplex *data);
 	void printFloat(float *data);

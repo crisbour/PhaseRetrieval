@@ -1,22 +1,25 @@
 #ifndef __KERNELS_H__
 #define __KERNELS_H__
 
+#include <cuda_runtime_api.h>
+#include <cuda.h>
+#include <cufft.h>
+
 #define CUDART_INF_F            __int_as_float(0x7f800000)
 
 /** @brief GPU kernel for decomposition of a complex matrix in amplitude and phase
  * 
- * @param d_signal - input:  Complex matrix transposed in array format
+ * @param d_signal - input:  Complex matrix in array format
  * @param d_amp    - output: Amplitude matrix __
  * @param d_phase  - output: Phase matrix __
  * @param dim      - input:  Number of elements in the matrix
  * @return __global__ Decomp_kernel 
  */
-__global__
-void Decomp_kernel(cufftComplex *d_signal,float *d_amp,float *d_phase,unsigned int dim);
+__global__ void Decomp_kernel(cufftComplex *d_signal,float *d_amp,float *d_phase,unsigned int dim);
 
 /** @brief GPU kernel for composition of a complex matrix in amplitude and phase
  * 
- * @param d_signal - output: Complex matrix transposed in array format
+ * @param d_signal - output: Complex matrix in array format
  * @param d_amp    - input:  Amplitude matrix __
  * @param d_phase  - input:  Phase matrix __
  * @param dim      - input:  Number of elements in the matrix
