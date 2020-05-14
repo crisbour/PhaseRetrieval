@@ -14,10 +14,18 @@
 #include <cuda_runtime.h>
 #include <cuda.h>
 #include <cufft.h>
+#include <curand.h>
+#include "cublas_v2.h"
 #include "kernels.h"
 
 //Macros
 #define CUDA_CALL(x) do { if((x)!=cudaSuccess) { \
+    printf("Error at %s:%d\n",__FILE__,__LINE__);\
+    exit(EXIT_FAILURE);}} while(0)
+#define CUBLAS_CALL(x) do { if((x)!=CUBLAS_STATUS_SUCCESS) { \
+    printf("Error at %s:%d\n",__FILE__,__LINE__);\
+    exit(EXIT_FAILURE);}} while(0)
+#define CURAND_CALL(x) do { if((x)!=CURAND_STATUS_SUCCESS) { \
     printf("Error at %s:%d\n",__FILE__,__LINE__);\
     exit(EXIT_FAILURE);}} while(0)
 
@@ -37,17 +45,24 @@ class OppBlocks{
 protected:
 	cufftHandle planFFT;
 	cufftResult error;
+	cublasStatus_t stat_cublas;
+	cublasHandle_t handle_cublas;
+	curandGenerator_t curand_gen;
+	curandStatus_t stat_curand;
 	int nx,ny;
+	float *d_min,*d_max;
 	int *d_mutex;
 
 public:
 	OppBlocks(int nx,int ny);
 	~OppBlocks();
-	void SLM_To_Obj(cufftComplex *d_SLM,cufftComplex *d_Obj);
-	void Obj_to_SLM(cufftComplex *d_Obj,cufftComplex *d_SLM);
-	void Compose(cufftComplex *d_signal,float *d_amp,float *d_phase);
-	void Decompose(cufftComplex *d_signal,float *d_amp,float *d_phase);
-	void Normalize(float *d_amp,float *d_min);
+	void SLM_To_Obj(cuComplex *d_SLM,cuComplex *d_Obj);
+	void Obj_to_SLM(cuComplex *d_Obj,cuComplex *d_SLM);
+	void Compose(cuComplex *d_signal,float *d_amp,float *d_phase);
+	void Decompose(cuComplex *d_signal,float *d_amp,float *d_phase);
+	void RandomArray(float* d_array,float min, float max);
+	void Normalize(float *d_quantity);
+	void NormalizedIntensity(float *d_amp, float *d_int);
 };
 
 
@@ -59,24 +74,25 @@ public:
 
 class PhaseRetrieve:protected OppBlocks{
 protected:
-	cufftComplex *h_img;
-	cufftComplex *h_fimg;
-	float *h_amp;
-	float h_min;
-	float *h_phase;
-	cufftComplex *d_img;
-	cufftComplex *d_fimg;
-	float *d_amp;
-	float *d_min;
-	float *d_phase;
+	cuComplex *h_complex;	cuComplex *d_complex;
+	float *h_amp;		float *h_phase;
+	float *d_amp;		float *d_phase;
+	float *h_illum;		float *d_illum;
+	float *h_damp;		float *d_damp;
 	int *d_mutex;
+	float *h_int,*d_int;
+	float *h_out_img,*h_out_phase;
+
 public:
-	PhaseRetrieve(int nx, int ny, PR_Type type);
+	PhaseRetrieve(float *gray_img,int nx, int ny, PR_Type type);
 	~PhaseRetrieve();
 	void InitGPU(int device_id);
+	void SetImage(float *gray_img);
+	void SetIllumination(float *illum_img);		//To do
+	void SetIllumination();
+	float* GetImage();
+	float* GetPhaseMask();
 	void Test();
-	void printComplex(cufftComplex *data);
-	void printFloat(float *data);
 	unsigned int index(unsigned int i, unsigned int j);
 };
 

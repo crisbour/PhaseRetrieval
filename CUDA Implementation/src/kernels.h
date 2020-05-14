@@ -30,14 +30,47 @@ __global__ void Decomp_kernel(cufftComplex *d_signal,float *d_amp,float *d_phase
 __global__
 void Comp_kernel(cufftComplex *d_signal,float *d_amp,float *d_phase,unsigned int dim);
 
-/** @brief Scale matrix after inverse Fourier Transform
+/**
+ * @brief Square the amplitude and find the intensity matrix
+ * 
+ * @param d_amp 
+ * @param d_int 
+ * @return __global__ scaleFourier_kernel 
+ */
+__global__
+void amplitudeToIntensity_kernel(float *d_amp, float *d_int,unsigned int dim);
+
+/** 
+ * @brief Scale matrix after inverse Fourier Transform
  * 
  * @param d_signal  - input/output: Signal to be scaled
  * @param dim       - input:        Dimension of the signal
  * @return __global__ scale_kernel 
  */
 __global__
-void scale_kernel(cufftComplex *d_signal, unsigned int dim);
+void scaleFourier_kernel(cufftComplex *d_signal, unsigned int dim);
+
+/**
+ * @brief Scale a amplitude matrix by a coefficient.(i.e. normalize amplitude)
+ * 
+ * @param d_signal 
+ * @param dim 
+ * @param scale_factor 
+ * @return __global__ scaleAmp_kernel 
+ */
+__global__
+void scaleAmp_kernel(float *d_signal, unsigned int dim,float scale_factor);
+
+/**
+ * @brief Add real number to every element of an array.
+ * 
+ * @param d_signal 
+ * @param dim 
+ * @param add_factor 
+ * @return __global__ scaleAmp_kernel 
+ */
+__global__
+void addFloatArray_kernel(float *d_signal, unsigned int dim,float add_factor);
 
 /** @brief Find the maximum in an array
  * 
@@ -49,5 +82,16 @@ void scale_kernel(cufftComplex *d_signal, unsigned int dim);
  */
 __global__
 void max_kernel(float *d_in,float *d_max,int *mutex,unsigned int length);
+
+/** @brief Find the minimum in an array
+ * 
+ * @param d_in      - input:    Input array
+ * @param d_max     - output:   Minimum value 
+ * @param mutex     - global:   Mutual exclusion variable
+ * @param length    - input:    Dimension of the array
+ * @return __global__ max_kernel 
+ */
+__global__
+void min_kernel(float *d_in,float *d_max,int *mutex,unsigned int length);
 
 #endif
