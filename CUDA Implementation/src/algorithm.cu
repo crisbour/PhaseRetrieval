@@ -11,8 +11,10 @@ OppBlocks::OppBlocks(int nx,int ny):nx(nx),ny(ny){
 	if((error = cufftPlan2d(&planFFT,nx,ny, CUFFT_C2C))!=CUFFT_SUCCESS){
 		printf("CUFFT error: Plan creation failed");
 	}
+	CUDA_CALL(cudaMalloc((void**)&d_mutex,sizeof(int)));
 }
 OppBlocks::~OppBlocks(){
+	cudaFree(d_mutex);
 	cufftDestroy(planFFT);
 	cufftDestroy(planFFT);
 	printf("OppBlocks destructed successfully!\n");
@@ -51,7 +53,6 @@ PhaseRetrieve::PhaseRetrieve(int nx, int ny, PR_Type type):OppBlocks(nx,ny){
 	CUDA_CALL(cudaMalloc((void**)&d_amp,nx*ny*sizeof(float)));
 	CUDA_CALL(cudaMalloc((void**)&d_min,sizeof(float)));
 	CUDA_CALL(cudaMalloc((void**)&d_phase,nx*ny*sizeof(float)));
-	CUDA_CALL(cudaMalloc((void**)&d_mutex,sizeof(int)));
 }
 
 PhaseRetrieve::~PhaseRetrieve(){
@@ -59,7 +60,7 @@ PhaseRetrieve::~PhaseRetrieve(){
 	free(h_amp); free(h_phase);
 	cudaFree(d_img);	cudaFree(d_fimg);
 	cudaFree(d_amp);	cudaFree(d_phase);
-	cudaFree(d_min);
+	cudaFree(d_min);	
 	printf("PhaseRetrieve destructed successfully!\n");
 }
 void PhaseRetrieve::InitGPU(int device_id){
@@ -107,8 +108,9 @@ void PhaseRetrieve::Test(){
 	Decompose(d_img,d_amp,d_phase);
 	Compose(d_img,d_amp,d_phase);
 	Normalize(d_amp,d_min);
-	//printf("Let's see!\n");
-	//CUDA_CALL(cudaMemcpy(&h_min,d_min,sizeof(float),cudaMemcpyDeviceToHost));
+	cudaDeviceSynchronize();
+	printf("Let's see!\n");
+	CUDA_CALL(cudaMemcpy(&h_min,d_min,sizeof(float),cudaMemcpyDeviceToHost));
 	printf("Max= %f\n",h_min);
 	for(int i=0;i<50;i++){
 		Obj_to_SLM(d_img,d_fimg);
@@ -125,9 +127,13 @@ void PhaseRetrieve::Test(){
 
 	//printComplex(h_fimg);
 
-	float err=0;
+	float err=0;float max=-10000000;
 	for(int i=0;i<ny;i++)
-		for(int j=0;j<nx;j++)
+		for(int j=0;j<nx;j++){
 			err+=pow((h_fimg[nx*i+j].x-h_img[nx*i+j].x),2)+pow((h_fimg[nx*i+j].y-h_img[nx*i+j].y),2);
+			if(max<h_amp[nx*i+j])
+				max=h_amp[nx*i+j];
+		}
+	printf("CPU Max = %f\n",max);
 	printf("Error squared: %f\n",err);
 }

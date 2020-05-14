@@ -1,7 +1,9 @@
 #ifndef __KERNELS_H__
 #define __KERNELS_H__
 
+#include <stdio.h>
 #include <cuda_runtime_api.h>
+#include <cuda_runtime.h>
 #include <cuda.h>
 #include <cufft.h>
 

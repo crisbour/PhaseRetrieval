@@ -31,7 +31,6 @@ void scale_kernel(cufftComplex *d_signal, unsigned int dim){
 
 __global__
 void max_kernel(float *d_in,float *d_max,int *mutex,unsigned int length){
-    atomicExch(mutex,0);
     __shared__ float sdata[1024];
     unsigned int tid = threadIdx.x;
     unsigned int index = blockIdx.x*blockDim.x + threadIdx.x;
@@ -39,13 +38,18 @@ void max_kernel(float *d_in,float *d_max,int *mutex,unsigned int length){
     unsigned int offset=0;
 
     float temp = -CUDART_INF_F;
+    if(index==0){                //Set d_max to infinity only once to avoid racing condition
+        *d_max=-CUDART_INF_F;
+        atomicExch(mutex,0);
+    }
     while(index+offset<length){
         temp=fmaxf(temp,d_in[index+offset]);
         offset+=stride;
     }
-    
+
 	sdata[tid] = temp;
     __syncthreads();
+    
     
     if(index<length)
     for(unsigned int s=blockDim.x/2;s>0;s>>=1){
@@ -59,5 +63,5 @@ void max_kernel(float *d_in,float *d_max,int *mutex,unsigned int length){
         *d_max = fmaxf(*d_max,sdata[0]);
         atomicExch(mutex,0);
     }
-        
+    
 }
