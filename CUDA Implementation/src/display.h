@@ -1,3 +1,9 @@
+/*
+ * display.h
+ *
+ *  Created on: 10 May 2020
+ *      Author: Cristian Bourceanu
+ */
 #ifndef __IMAGEPR_H__
 #define __IMAGEPR_H__
 

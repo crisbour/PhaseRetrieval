@@ -1,15 +1,15 @@
 /*
  * algorithm.cu
  *
- *  Created on: 11 May 2020
- *      Author: cristi
+ *  Created on: 6 May 2020
+ *      Author: Cristian Bourceanu
  */
 #include "algorithm.h"
 
 
-//*********** OppBlocks Definitions ***********//
+//*********** OpBlocks Definitions ***********//
 
-OppBlocks::OppBlocks(int nx,int ny):nx(nx),ny(ny){
+OpBlocks::OpBlocks(int nx,int ny):nx(nx),ny(ny){
 	if((error = cufftPlan2d(&planFFT,nx,ny, CUFFT_C2C))!=CUFFT_SUCCESS){
 		printf("CUFFT error: Plan creation failed");
 	}
@@ -24,37 +24,36 @@ OppBlocks::OppBlocks(int nx,int ny):nx(nx),ny(ny){
 	CUDA_CALL(cudaMalloc((void**)&d_max,sizeof(float)));
 	CUDA_CALL(cudaMalloc((void**)&d_mutex,sizeof(int)));
 }
-OppBlocks::~OppBlocks(){
-	cudaFree(d_min);
-	cudaFree(d_max);
-	cudaFree(d_mutex);
-	cufftDestroy(planFFT);
-	cufftDestroy(planFFT);
+OpBlocks::~OpBlocks(){
+	CUDA_CALL(cudaFree(d_min));
+	CUDA_CALL(cudaFree(d_max));
+	CUDA_CALL(cudaFree(d_mutex));
+	CUFFT_CALL(cufftDestroy(planFFT));
 	CUBLAS_CALL(cublasDestroy(handle_cublas)); 
-	printf("OppBlocks destructed successfully!\n");
+	printf("OpBlocks destructed successfully!\n");
 }
-void OppBlocks::SLM_To_Obj(cuComplex *d_SLM,cuComplex *d_Obj){
-	cufftExecC2C(planFFT,d_SLM,d_Obj,CUFFT_INVERSE);
+void OpBlocks::SLM_To_Obj(cuComplex *d_SLM,cuComplex *d_Obj){
+	CUFFT_CALL(cufftExecC2C(planFFT,d_SLM,d_Obj,CUFFT_INVERSE));
 	//scaleFourier_kernel<<<(nx*ny+1023)/1024,1024>>>(d_Obj,nx*ny);
 	float scale = 1.0/(nx*ny);
 	cudaDeviceSynchronize();
-	cublasCsscal(handle_cublas,nx*ny,&scale,d_Obj,1);
+	CUBLAS_CALL(cublasCsscal(handle_cublas,nx*ny,&scale,d_Obj,1));
 
 }
-void OppBlocks::Obj_to_SLM(cuComplex *d_Obj,cuComplex *d_SLM){
-	cufftExecC2C(planFFT,d_Obj,d_SLM,CUFFT_FORWARD);
+void OpBlocks::Obj_to_SLM(cuComplex *d_Obj,cuComplex *d_SLM){
+	CUFFT_CALL(cufftExecC2C(planFFT,d_Obj,d_SLM,CUFFT_FORWARD));
 }
 
-void OppBlocks::Compose(cuComplex *d_signal,float *d_amp,float *d_phase){
+void OpBlocks::Compose(cuComplex *d_signal,float *d_amp,float *d_phase){
 	Comp_kernel<<<(nx*ny+1023)/1024,1024>>>(d_signal,d_amp,d_phase,nx*ny);
 }
-void OppBlocks::Decompose(cuComplex *d_signal,float *d_amp,float *d_phase){
+void OpBlocks::Decompose(cuComplex *d_signal,float *d_amp,float *d_phase){
 	Decomp_kernel<<<(nx*ny+1023)/1024,1024>>>(d_signal,d_amp,d_phase,nx*ny);
 }
-void OppBlocks::RandomArray(float* d_array,float min, float max){
+void OpBlocks::RandomArray(float* d_array,float min, float max){
 	curandGenerateNormal(curand_gen,d_array,nx*ny,min,max);
 }
-void OppBlocks::Normalize(float *d_quantity){
+void OpBlocks::Normalize(float *d_quantity){
 	float h_min,h_max;
 
 	max_kernel<<<32,1024>>>(d_quantity,d_max,d_mutex,nx*ny);
@@ -62,13 +61,13 @@ void OppBlocks::Normalize(float *d_quantity){
 	min_kernel<<<32,1024>>>(d_quantity,d_min,d_mutex,nx*ny);
 	cudaMemcpy(&h_min,d_min,sizeof(float),cudaMemcpyDeviceToHost);
 	float scale=1/(h_max-h_min);
-	cublasSscal(handle_cublas,nx*ny,&scale,d_quantity,1);
+	CUBLAS_CALL(cublasSscal(handle_cublas,nx*ny,&scale,d_quantity,1));
 	cudaDeviceSynchronize();
 	//scaleAmp_kernel<<<(nx*ny+1023)/1024,1024>>>(d_amp,nx*ny,h_max-h_min);
 	addFloatArray_kernel<<<(nx*ny+1023)/1024,1024>>>(d_quantity,nx*ny,-h_min/(h_max-h_min));		//Couldn't find cublas to add scalar to an array
 	printf("(min,max)=(%f,%f)\n",h_min,h_max);
 }
-void OppBlocks::NormalizedIntensity(float *d_amp,float *d_intensity){
+void OpBlocks::NormalizedIntensity(float *d_amp,float *d_intensity){
 	amplitudeToIntensity_kernel<<<(nx*ny+1023)/1024,1024>>>(d_amp,d_intensity,nx*ny);
 	Normalize(d_intensity);
 }
@@ -78,7 +77,8 @@ void OppBlocks::NormalizedIntensity(float *d_amp,float *d_intensity){
 
 //*********** PhaseRetrieve ***********//
 
-PhaseRetrieve::PhaseRetrieve(float *gray_img,int nx, int ny, PR_Type type):OppBlocks(nx,ny){
+PhaseRetrieve::PhaseRetrieve(float *gray_img,unsigned int nx,unsigned int ny, PR_Type type):
+nx(nx),ny(ny){
 	InitGPU(0);
 
 	//Host memory allocation
@@ -101,6 +101,8 @@ PhaseRetrieve::PhaseRetrieve(float *gray_img,int nx, int ny, PR_Type type):OppBl
 
 	SetImage(gray_img);
 	SetIllumination();
+	operation=new OpBlocks(nx,ny);
+	SetAlgorithm(type);
 }
 
 PhaseRetrieve::~PhaseRetrieve(){
@@ -109,6 +111,10 @@ PhaseRetrieve::~PhaseRetrieve(){
 	cudaFree(device->complex);	cudaFree(device->damp);
 	cudaFree(device->amp);		cudaFree(device->phase);	
 	cudaFree(device->intensity);		cudaFree(device->illum);
+	delete[] device;
+	delete[] host;
+	delete operation;
+	delete algorithm;
 	printf("PhaseRetrieve destructed successfully!\n");
 }
 void PhaseRetrieve::InitGPU(int device_id){
@@ -117,6 +123,11 @@ void PhaseRetrieve::InitGPU(int device_id){
 	if(device_id<devCount)		//check if there are enogh GPUs
         cudaSetDevice(device_id);
     else exit(1);
+}
+void PhaseRetrieve::SetAlgorithm(PR_Type type){
+	if(algorithm)
+		delete algorithm;
+	algorithm=AlgorithmCreator().FactoryMethod(operation,device,host,type);
 }
 void PhaseRetrieve::SetImage(float *gray_img){
 	for(int i=0;i<ny;i++)
@@ -141,26 +152,25 @@ unsigned int PhaseRetrieve::index(unsigned int i, unsigned int j){
 }
 void PhaseRetrieve::Test(){
 
-	RandomArray(device->phase,-M_PI,M_PI);
+	operation->RandomArray(device->phase,-M_PI,M_PI);
 
-	for(int i=0;i<50;i++){
-		Compose(device->complex,device->damp,device->phase);
-		Obj_to_SLM(device->complex,device->complex);
-		Decompose(device->complex,device->amp,device->phase);
-		Compose(device->complex,device->illum,device->phase);
-		SLM_To_Obj(device->complex,device->complex);
-		Decompose(device->complex,device->amp,device->phase);
+	for(int i=0;i<1000;i++){
+		algorithm->OneIteration();
+		operation->Decompose(device->complex,device->amp,device->phase);
+		operation->Compose(device->complex,device->illum,device->phase);
+		operation->SLM_To_Obj(device->complex,device->complex);
+		operation->Decompose(device->complex,device->amp,device->phase);
 	}
 
-	NormalizedIntensity(device->amp,device->intensity);
+	operation->NormalizedIntensity(device->amp,device->intensity);
 
 	CUDA_CALL(cudaMemcpy(host->amp,device->amp,nx*ny*sizeof(float),cudaMemcpyDeviceToHost));
 	CUDA_CALL(cudaMemcpy(host->intensity,device->intensity,nx*ny*sizeof(float),cudaMemcpyDeviceToHost));
 
-	Obj_to_SLM(device->complex,device->complex);
-	Decompose(device->complex,device->amp,device->phase);
+	operation->Obj_to_SLM(device->complex,device->complex);
+	operation->Decompose(device->complex,device->amp,device->phase);
 
-	Normalize(device->phase);
+	operation->Normalize(device->phase);
 	CUDA_CALL(cudaMemcpy(h_out_phase,device->phase,nx*ny*sizeof(float),cudaMemcpyDeviceToHost));
 
 	float err=0;
@@ -180,4 +190,13 @@ float* PhaseRetrieve::GetImage(){
 
 float* PhaseRetrieve::GetPhaseMask(){
 	return h_out_phase;
+}
+
+
+
+/********** Algorithms Implementation ***************/
+
+void GS_ALG::OneIteration(){
+	operation->Compose(device->complex,device->damp,device->phase);
+	operation->Obj_to_SLM(device->complex,device->complex);
 }

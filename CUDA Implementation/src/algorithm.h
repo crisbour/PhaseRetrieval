@@ -1,8 +1,8 @@
 /*
  * algorithm.h
  *
- *  Created on: 11 May 2020
- *      Author: cristi
+ *  Created on: 6 May 2020
+ *      Author: Cristian Bourceanu
  */
 
 #ifndef __ALGORITHM_H__
@@ -20,11 +20,15 @@
 
 //Macros to assert if cuda functions has been processed correctly 
 //If an error occurs it halts the program and it prints
-//the line of code where the error happend 
+//the line of code where the error happend.
+//It's not mandatory to use these, but it's a good defensive mechanism
 #define CUDA_CALL(x) do { if((x)!=cudaSuccess) { \
     printf("Error at %s:%d\n",__FILE__,__LINE__);\
     exit(EXIT_FAILURE);}} while(0)
 #define CUBLAS_CALL(x) do { if((x)!=CUBLAS_STATUS_SUCCESS) { \
+    printf("Error at %s:%d\n",__FILE__,__LINE__);\
+    exit(EXIT_FAILURE);}} while(0)
+#define CUFFT_CALL(x) do { if((x)!=CUFFT_SUCCESS) { \
     printf("Error at %s:%d\n",__FILE__,__LINE__);\
     exit(EXIT_FAILURE);}} while(0)
 #define CURAND_CALL(x) do { if((x)!=CURAND_STATUS_SUCCESS) { \
@@ -43,6 +47,19 @@ enum PR_Type{
 };
 
 /**
+ * @brief Structuring of host and device data
+ * 
+ */
+struct DeviceMemory{
+	float *damp,*illum,*amp,*phase,*intensity;
+	cuComplex *complex;
+};
+struct HostMemory{
+	float *damp,*illum,*intensity,*phase,*amp;
+	cuComplex *complex;
+};
+
+/**
  * @brief Operational Blocks to run with CUDA for Phase Retrieval Algorithm
  * Functionalities:
  * 	-	"SLM_To_Obj": Inverse Fourier Transform from image plane to the pupils exit plane of the objective(Phase lagged from SLM)
@@ -55,7 +72,7 @@ enum PR_Type{
  * 
  */
 
-class OppBlocks{
+class OpBlocks{
 protected:
 	cufftHandle planFFT;
 	cufftResult error;
@@ -68,8 +85,8 @@ protected:
 	int *d_mutex;
 
 public:
-	OppBlocks(int nx,int ny);
-	~OppBlocks();
+	OpBlocks(int nx,int ny);
+	~OpBlocks();
 	void SLM_To_Obj(cuComplex *d_SLM,cuComplex *d_Obj);
 	void Obj_to_SLM(cuComplex *d_Obj,cuComplex *d_SLM);
 	void Compose(cuComplex *d_signal,float *d_amp,float *d_phase);
@@ -79,34 +96,82 @@ public:
 	void NormalizedIntensity(float *d_amp, float *d_int);
 };
 
-struct DeviceMemory{
-	float *damp,*illum,*amp,*phase,*intensity;
-	cuComplex *complex;
+
+
+
+
+
+
+
+/** @brief Factory Method of the algorithm for PhaseRetrieve
+ *
+ */
+class PhaseRetrievalAlgorithm{
+protected:
+	DeviceMemory *device;
+	HostMemory *host;
+	OpBlocks *operation;
+public:
+	PhaseRetrievalAlgorithm(OpBlocks *operation,DeviceMemory *device,HostMemory *host):device(device),host(host),operation(operation){};
+	virtual ~PhaseRetrievalAlgorithm(){};
+	virtual void OneIteration()=0;
 };
-struct HostMemory{
-	float *damp,*illum,*intensity,*phase,*amp;
-	cuComplex *complex;
+
+class GS_ALG:public PhaseRetrievalAlgorithm{
+public:
+	GS_ALG(OpBlocks *operation,DeviceMemory *device,HostMemory *host):PhaseRetrievalAlgorithm(operation,device,host){};
+	~GS_ALG(){};
+	void OneIteration();
 };
+
+class MRAF_ALG:public PhaseRetrievalAlgorithm{
+public:
+	MRAF_ALG(OpBlocks *operation,DeviceMemory *device,HostMemory *host):PhaseRetrievalAlgorithm(operation,device,host){};
+	~MRAF_ALG(){};
+	void OneIteration(){};
+};
+
+class Wang_ALG:public PhaseRetrievalAlgorithm{
+public:
+	Wang_ALG(OpBlocks *operation,DeviceMemory *device,HostMemory *host):PhaseRetrievalAlgorithm(operation,device,host){};
+	~Wang_ALG(){};
+	void OneIteration(){};
+};
+
+class AlgorithmCreator{
+public:
+	PhaseRetrievalAlgorithm *FactoryMethod(OpBlocks *operation,DeviceMemory *device,HostMemory *host,PR_Type type){
+		if(type == Gerchberg_Saxton)	return new GS_ALG(operation,device, host);
+		if(type == MRAF)				return new MRAF_ALG(operation,device, host);
+		if(type == Wang)				return new Wang_ALG(operation,device, host);
+		printf("The algorithm specified is not a valid one! Check 'PR_Type' enumeration in algorithm.h !\n");
+		exit(-1);
+	}
+};
+
+
+
+
+
+
+
 /** @brief Phase Retrieval Algorithm that inherits the
  * optimised CUDA operation blocks. It initalizes memory for the
  * the graphics card that will be used by the operation blocks.
  *
  */
 
-class PhaseRetrieve:protected OppBlocks{
+class PhaseRetrieve{
 protected:
-	// cuComplex *d_complex;
-	// float *h_amp;		float *h_phase;
-	// float *d_amp;		float *d_phase;
-	// float *h_illum;		float *d_illum;
-	// float *h_damp;		float *d_damp;
-	// float *h_int,*d_int;
+	unsigned int nx,ny;
 	DeviceMemory *device=new DeviceMemory;
 	HostMemory *host=new HostMemory;
+	OpBlocks *operation = NULL;
+	PhaseRetrievalAlgorithm *algorithm = NULL;
 	float *h_out_img,*h_out_phase;
 
 public:
-	PhaseRetrieve(float *gray_img,int nx, int ny, PR_Type type=Gerchberg_Saxton);
+	PhaseRetrieve(float *gray_img,unsigned int nx,unsigned int ny, PR_Type type=Gerchberg_Saxton);
 	~PhaseRetrieve();
 	void InitGPU(int device_id);
 	void SetImage(float *gray_img);
@@ -119,35 +184,5 @@ public:
 	void Test();
 	unsigned int index(unsigned int i, unsigned int j);
 };
-
-// /** @brief Factory Method of the algorithm for PhaseRetrieve
-//  *
-//  */
-// class PhaseRetrievalAlgorithm:protected OppBlocks{
-// public:
-// 	virtual void OneIteration()=0;
-// 	virtual void GetData()=0;
-// };
-
-// class GS:protected PhaseRetrievalAlgorithm{
-// 	void OneIteration();
-// };
-
-
-// class MRAF:protected PhaseRetrievalAlgorithm{
-
-// }
-
-// class Wang{
-// protected:
-// 	float *d_previous_phase;
-// };
-
-// class AlgorithmCreator{
-// public:
-// 	static PhaseRetrievalAlgorithm FactoryMethod(PR_Type type){
-// 		if(type==Gerchberg_Saxton)	return new GS();
-// 	}
-// };
 
 #endif /* ALGORITHM_H_ */

@@ -1,3 +1,9 @@
+/*
+ * kernels.h
+ *
+ *  Created on: 6 May 2020
+ *      Author: Cristian Bourceanu
+ */
 #ifndef __KERNELS_H__
 #define __KERNELS_H__
 

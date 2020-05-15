@@ -1,3 +1,9 @@
+/*
+ * display.cpp
+ *
+ *  Created on: 10 May 2020
+ *      Author: Cristian Bourceanu
+ */
 #include "display.h"
 
 void space2underscore(char *str,int length){

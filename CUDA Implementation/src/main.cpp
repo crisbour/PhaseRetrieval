@@ -1,8 +1,8 @@
 /*
- * main.cu
+ * main.cpp
  *
- *  Created on: 11 May 2020
- *      Author: cristi
+ *  Created on: 6 May 2020
+ *      Author: Cristian Bourceanu
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,7 +18,7 @@ int main(int argc, char **argv){
 
 	ImagePR desired(argv[1]); 
 	ImagePR illumination(desired.GetHeight(),desired.GetWidth(),cv::COLORMAP_JET);
-	illumination.MakeGaussian((desired.GetWidth()-1)/2.0,(desired.GetHeight()-1)/2.0,500.,500.);
+	illumination.MakeGaussian((desired.GetWidth()-1)/2.0,(desired.GetHeight()-1)/2.0,5000000.,5000000.);
 
 	PhaseRetrieve transfs(desired.GetGray(),desired.GetHeight(),desired.GetWidth(),Gerchberg_Saxton);
 	transfs.SetIllumination(illumination.GetGray());
