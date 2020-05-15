@@ -17,12 +17,12 @@ class MetricType:
     MeanError   =   'MeanError'  
     MaxError    =   'MaxError'
  
-class IlluminPatterns:
+# class IlluminPatterns:
 
-    def Gaussian(self,(height,width),miu,sigma):
-        x,y = np.meshgrid(range(height),range(width))
-        d=np.sqrt(x*x+y*y)
-        return 255*np.exp(-(d-miu)**2/(2.0*sigma**2))
+#     def Gaussian(self,(height,width),miu,sigma):
+#         x,y = np.meshgrid(range(height),range(width))
+#         d=np.sqrt(x*x+y*y)
+#         return 255*np.exp(-(d-miu)**2/(2.0*sigma**2))
 
 class SLM_Phase:
     
@@ -161,7 +161,7 @@ class MRAF(PhaseRetrieval):
             self.__last_obj=np.empty_like(U_o)
             eps=np.linalg.norm(U_o)
         phase_o=np.angle(U_o)
-        M=self.SLM_handler.uniformity[-1]
+        M=1-self.SLM_handler.uniformity[-1]
         self.A_x=((1+M)*self.norm(self.SLM_handler.target_amp)-M*self.norm(np.abs(U_o)))*self.A_x
         U_x=self.A_x*np.exp(1j*phase_o)
         return U_x

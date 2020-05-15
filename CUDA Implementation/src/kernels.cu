@@ -90,6 +90,7 @@ void max_kernel(float *d_in,float *d_max,int *mutex,unsigned int length){
         *d_max = fmaxf(*d_max,sdata[0]);
         atomicExch(mutex,0);
     }
+    __syncthreads();
     
 }
 
@@ -102,10 +103,9 @@ void min_kernel(float *d_in,float *d_min,int *mutex,unsigned int length){
     unsigned int offset=0;
 
     float temp = CUDART_INF_F;
-    if(index==0){                //Set d_max to infinity only once to avoid racing condition
+    if(index==0)              //Set d_max to infinity only once to avoid racing condition
         *d_min=CUDART_INF_F;
-        atomicExch(mutex,0);
-    }
+
     while(index+offset<length){
         temp=fminf(temp,d_in[index+offset]);
         offset+=stride;
@@ -127,5 +127,128 @@ void min_kernel(float *d_in,float *d_min,int *mutex,unsigned int length){
         *d_min = fminf(*d_min,sdata[0]);
         atomicExch(mutex,0);
     }
+    __syncthreads();
+}
+
+__global__
+void minmax_kernel(float *d_signal,float *d_min, float *d_max,int *mutex, unsigned int length){
+    __shared__ float mindata[1024];
+    __shared__ float maxdata[1024];
+    unsigned int tid = threadIdx.x;
+    unsigned int index = blockIdx.x*blockDim.x + threadIdx.x;
+    unsigned int stride = blockDim.x*gridDim.x;
+    unsigned int offset=0;
+
+    float mintemp = CUDART_INF_F;
+    float maxtemp = -CUDART_INF_F;
+    if(index==0){              //Set d_max to infinity only once to avoid racing condition
+        *d_min=CUDART_INF_F;
+        *d_max=-CUDART_INF_F;
+    }
+    while(index+offset<length){
+        mintemp=fminf(mintemp,d_signal[index+offset]);
+        maxtemp=fmaxf(maxtemp,d_signal[index+offset]);
+        offset+=stride;
+    }
+
+    mindata[tid] = mintemp;
+    maxdata[tid] = maxtemp;
+    __syncthreads();
     
+
+    for(unsigned int s=blockDim.x/2;s>0;s>>=1){
+        if(tid<s){
+            mindata[tid]=fminf(mindata[tid],mindata[tid+s]);
+            maxdata[tid]=fmaxf(maxdata[tid],maxdata[tid+s]);
+        }    
+        __syncthreads();
+    }
+    
+    if(tid == 0){
+        while(atomicCAS(mutex,0,1));
+        *d_min = fminf(*d_min,mindata[0]);
+        *d_max = fmaxf(*d_max,maxdata[0]);
+        atomicExch(mutex,0);
+    }
+    __syncthreads();
+}
+
+__global__
+void minmaxROI_kernel(float *d_signal,float *d_min, float *d_max,int *mutex,unsigned int *ROI, unsigned int nROI){
+    __shared__ float mindata[1024];
+    __shared__ float maxdata[1024];
+    unsigned int tid = threadIdx.x;
+    unsigned int index = blockIdx.x*blockDim.x + threadIdx.x;
+    unsigned int stride = blockDim.x*gridDim.x;
+    unsigned int offset=0;
+
+    float mintemp = CUDART_INF_F;
+    float maxtemp = -CUDART_INF_F;
+    if(index==0){              //Set d_max to infinity only once to avoid racing condition
+        *d_min=CUDART_INF_F;
+        *d_max=-CUDART_INF_F;
+    }
+    while(index+offset<nROI){
+        mintemp=fminf(mintemp,d_signal[ROI[index+offset]]);
+        maxtemp=fmaxf(maxtemp,d_signal[ROI[index+offset]]);
+        offset+=stride;
+    }
+
+    mindata[tid] = mintemp;
+    maxdata[tid] = maxtemp;
+    __syncthreads();
+    
+    
+    if(index<nROI)
+    for(unsigned int s=blockDim.x/2;s>0;s>>=1){
+        if(tid<s){
+            mindata[tid]=fminf(mindata[tid],mindata[tid+s]);
+            maxdata[tid]=fmaxf(maxdata[tid],maxdata[tid+s]);
+        }    
+        __syncthreads();
+    }
+    
+    if(tid == 0){
+        while(atomicCAS(mutex,0,1));
+        *d_min = fminf(*d_min,mindata[0]);
+        *d_max = fmaxf(*d_max,maxdata[0]);
+        atomicExch(mutex,0);
+    }
+    __syncthreads();
+}
+
+__global__
+void sumROI_kernel(float *d_signal,float *d_sum,int *mutex,unsigned int *ROI, unsigned int nROI){
+    __shared__ float data[1024];
+    unsigned int tid = threadIdx.x;
+    unsigned int index = blockIdx.x*blockDim.x + threadIdx.x;
+    unsigned int stride = blockDim.x*gridDim.x;
+    unsigned int offset=0;
+
+    float temp = 0;
+    if(index==0){              //Set d_max to infinity only once to avoid racing condition
+        *d_sum=0;
+    }
+    while(index+offset<nROI){
+        temp+=fabsf(d_signal[ROI[index+offset]]);
+        offset+=stride;
+    }
+
+    data[tid] = temp;
+    __syncthreads();
+    
+    
+    if(index<nROI)
+    for(unsigned int s=blockDim.x/2;s>0;s>>=1){
+        if(tid<s)
+            data[tid]=data[tid]+data[tid+s];  
+        __syncthreads();
+    }
+    
+    if(tid == 0){
+        while(atomicCAS(mutex,0,1));
+        *d_sum += data[0];
+        atomicExch(mutex,0);
+    }
+    __syncthreads();
 }

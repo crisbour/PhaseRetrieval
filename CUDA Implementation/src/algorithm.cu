@@ -23,6 +23,7 @@ OpBlocks::OpBlocks(int nx,int ny):nx(nx),ny(ny){
 	CUDA_CALL(cudaMalloc((void**)&d_min,sizeof(float)));
 	CUDA_CALL(cudaMalloc((void**)&d_max,sizeof(float)));
 	CUDA_CALL(cudaMalloc((void**)&d_mutex,sizeof(int)));
+	CUDA_CALL(cudaMemset(d_mutex,0,sizeof(int)));
 }
 OpBlocks::~OpBlocks(){
 	CUDA_CALL(cudaFree(d_min));
@@ -53,25 +54,41 @@ void OpBlocks::Decompose(cuComplex *d_signal,float *d_amp,float *d_phase){
 void OpBlocks::RandomArray(float* d_array,float min, float max){
 	curandGenerateNormal(curand_gen,d_array,nx*ny,min,max);
 }
+void OpBlocks::ZeroArray(float* d_array,size_t n_bytes){
+	CUDA_CALL(cudaMemset(d_array,0,n_bytes));
+}
 void OpBlocks::Normalize(float *d_quantity){
 	float h_min,h_max;
-
-	max_kernel<<<32,1024>>>(d_quantity,d_max,d_mutex,nx*ny);
+	minmax_kernel<<<32,1024>>>(d_quantity,d_min,d_max,d_mutex,nx*ny);
 	cudaMemcpy(&h_max,d_max,sizeof(float),cudaMemcpyDeviceToHost);
-	min_kernel<<<32,1024>>>(d_quantity,d_min,d_mutex,nx*ny);
 	cudaMemcpy(&h_min,d_min,sizeof(float),cudaMemcpyDeviceToHost);
 	float scale=1/(h_max-h_min);
 	CUBLAS_CALL(cublasSscal(handle_cublas,nx*ny,&scale,d_quantity,1));
 	cudaDeviceSynchronize();
-	//scaleAmp_kernel<<<(nx*ny+1023)/1024,1024>>>(d_amp,nx*ny,h_max-h_min);
 	addFloatArray_kernel<<<(nx*ny+1023)/1024,1024>>>(d_quantity,nx*ny,-h_min/(h_max-h_min));		//Couldn't find cublas to add scalar to an array
 	printf("(min,max)=(%f,%f)\n",h_min,h_max);
+}
+void OpBlocks::Intensity(float *d_amp,float *d_intensity){
+	amplitudeToIntensity_kernel<<<(nx*ny+1023)/1024,1024>>>(d_amp,d_intensity,nx*ny);
 }
 void OpBlocks::NormalizedIntensity(float *d_amp,float *d_intensity){
 	amplitudeToIntensity_kernel<<<(nx*ny+1023)/1024,1024>>>(d_amp,d_intensity,nx*ny);
 	Normalize(d_intensity);
 }
-
+/**
+ * @brief Uniformity within the region of interest
+ * 
+ * @param d_signal Signal whose uniformity is assesed
+ * @param d_ROI 	Array of indexes of the elements in the ROI
+ * @param n_ROI 	Length of d_ROI
+ */
+float OpBlocks::Uniformity(float *d_signal,unsigned int *d_ROI,unsigned int n_ROI){
+	minmaxROI_kernel<<<32,1024>>>(d_signal,d_min,d_max,d_mutex,d_ROI,n_ROI);
+	float h_min,h_max;
+	CUDA_CALL(cudaMemcpy(&h_max,d_max,sizeof(float),cudaMemcpyDeviceToHost));
+	CUDA_CALL(cudaMemcpy(&h_min,d_min,sizeof(float),cudaMemcpyDeviceToHost));
+	return 1-(h_max-h_min)/(h_max+h_min);
+}
 
 
 
@@ -86,7 +103,9 @@ nx(nx),ny(ny){
 	host->illum=(float*)malloc(nx*ny*sizeof(float));
 	host->damp=(float*)malloc(nx*ny*sizeof(float));
 	host->amp=(float*)malloc(nx*ny*sizeof(float));
-	host->phase=(float*)malloc(nx*ny*sizeof(float));
+	host->ampOut=(float*)malloc(nx*ny*sizeof(float));
+	host->phSLM=(float*)malloc(nx*ny*sizeof(float));
+	host->phImg=(float*)malloc(nx*ny*sizeof(float));
 	host->intensity=(float*)malloc(nx*ny*sizeof(float));
 	h_out_img=(float*)malloc(nx*ny*sizeof(float));
 	h_out_phase=(float*)malloc(nx*ny*sizeof(float));
@@ -96,8 +115,12 @@ nx(nx),ny(ny){
 	CUDA_CALL(cudaMalloc((void**)&device->illum,nx*ny*sizeof(float)));
 	CUDA_CALL(cudaMalloc((void**)&device->damp,nx*ny*sizeof(float)));
 	CUDA_CALL(cudaMalloc((void**)&device->amp,nx*ny*sizeof(float)));
-	CUDA_CALL(cudaMalloc((void**)&device->phase,nx*ny*sizeof(float)));
+	CUDA_CALL(cudaMalloc((void**)&device->ampOut,nx*ny*sizeof(float)));
+	CUDA_CALL(cudaMalloc((void**)&device->phSLM,nx*ny*sizeof(float)));
+	CUDA_CALL(cudaMalloc((void**)&device->phImg,nx*ny*sizeof(float)));
 	CUDA_CALL(cudaMalloc((void**)&device->intensity,nx*ny*sizeof(float)));
+
+	host->nx=nx;	host->ny=ny;
 
 	SetImage(gray_img);
 	SetIllumination();
@@ -106,11 +129,14 @@ nx(nx),ny(ny){
 }
 
 PhaseRetrieve::~PhaseRetrieve(){
-	free(host->complex);	free(host->damp);		free(host->amp);		free(host->phase);
+	free(host->complex);	free(host->damp);		free(host->amp);		free(host->phSLM);
 	free(host->intensity);		free(h_out_img);	free(h_out_phase);	free(host->illum);
+	free(host->ampOut);		free(host->phImg);
 	cudaFree(device->complex);	cudaFree(device->damp);
-	cudaFree(device->amp);		cudaFree(device->phase);	
+	cudaFree(device->amp);		cudaFree(device->phSLM);	
 	cudaFree(device->intensity);		cudaFree(device->illum);
+	cudaFree(device->ampOut);	cudaFree(device->phImg);
+	if(host->ROI){	free(host->ROI);	cudaFree(device->ROI);}	
 	delete[] device;
 	delete[] host;
 	delete operation;
@@ -152,31 +178,32 @@ unsigned int PhaseRetrieve::index(unsigned int i, unsigned int j){
 }
 void PhaseRetrieve::Test(){
 
-	operation->RandomArray(device->phase,-M_PI,M_PI);
+	operation->RandomArray(device->phImg,-M_PI,M_PI);
+	operation->RandomArray(device->phSLM,-M_PI,M_PI);
+
+	algorithm->Initialize();
 
 	for(int i=0;i<1000;i++){
 		algorithm->OneIteration();
-		operation->Decompose(device->complex,device->amp,device->phase);
-		operation->Compose(device->complex,device->illum,device->phase);
-		operation->SLM_To_Obj(device->complex,device->complex);
-		operation->Decompose(device->complex,device->amp,device->phase);
 	}
 
-	operation->NormalizedIntensity(device->amp,device->intensity);
+	operation->NormalizedIntensity(device->ampOut,device->intensity);
 
-	CUDA_CALL(cudaMemcpy(host->amp,device->amp,nx*ny*sizeof(float),cudaMemcpyDeviceToHost));
 	CUDA_CALL(cudaMemcpy(host->intensity,device->intensity,nx*ny*sizeof(float),cudaMemcpyDeviceToHost));
 
-	operation->Obj_to_SLM(device->complex,device->complex);
-	operation->Decompose(device->complex,device->amp,device->phase);
+	operation->Normalize(device->ampOut);
+	CUDA_CALL(cudaMemcpy(host->ampOut,device->ampOut,nx*ny*sizeof(float),cudaMemcpyDeviceToHost));
 
-	operation->Normalize(device->phase);
-	CUDA_CALL(cudaMemcpy(h_out_phase,device->phase,nx*ny*sizeof(float),cudaMemcpyDeviceToHost));
+	operation->Normalize(device->phSLM);
+	CUDA_CALL(cudaMemcpy(h_out_phase,device->phSLM,nx*ny*sizeof(float),cudaMemcpyDeviceToHost));
+
+	operation->Normalize(device->damp);
+	CUDA_CALL(cudaMemcpy(host->damp,device->damp,nx*ny*sizeof(float),cudaMemcpyDeviceToHost));
 
 	float err=0;
 	for(int i=0;i<ny;i++)
 		for(int j=0;j<nx;j++){
-			err+=pow((host->damp[index(i,j)]-host->amp[index(i,j)]),2);
+			err+=pow((host->damp[index(i,j)]-host->ampOut[index(i,j)]),2);
 			h_out_img[index(i,j)]=255*host->intensity[index(i,j)];
 			h_out_phase[index(i,j)]=255*h_out_phase[index(i,j)];
 		}
@@ -195,8 +222,37 @@ float* PhaseRetrieve::GetPhaseMask(){
 
 
 /********** Algorithms Implementation ***************/
+void GS_ALG::Initialize(){
 
+}
 void GS_ALG::OneIteration(){
-	operation->Compose(device->complex,device->damp,device->phase);
+	operation->Compose(device->complex,device->damp,device->phImg);
 	operation->Obj_to_SLM(device->complex,device->complex);
+	operation->Decompose(device->complex,device->amp,device->phSLM);
+	operation->Compose(device->complex,device->illum,device->phSLM);
+	operation->SLM_To_Obj(device->complex,device->complex);
+	operation->Decompose(device->complex,device->ampOut,device->phImg);
+}
+
+void MRAF_ALG::Initialize(float threshold){
+	//operation->ZeroArray(device->ampOut,host->nx * host->ny);
+	if(host->n_ROI==0){
+	host->ROI=(unsigned int*)malloc(host->nx*host->ny*sizeof(unsigned int));
+	for(unsigned int i=0;i<host->nx*host->ny;i++)
+		if(host->damp[i]>threshold){
+			host->ROI[host->n_ROI++]=i;
+		}
+		CUDA_CALL(cudaMalloc((void**)&device->ROI,host->n_ROI*sizeof(unsigned int)));
+		CUDA_CALL(cudaMemcpy(device->ROI,host->ROI,host->n_ROI*sizeof(unsigned int),cudaMemcpyHostToDevice));
+	}
+}
+void MRAF_ALG::OneIteration(){
+	//CUBLAS_CALL();
+	operation->Compose(device->complex,device->damp,device->phImg);
+
+	operation->Obj_to_SLM(device->complex,device->complex);
+	operation->Decompose(device->complex,device->amp,device->phSLM);
+	operation->Compose(device->complex,device->illum,device->phSLM);
+	operation->SLM_To_Obj(device->complex,device->complex);
+	operation->Decompose(device->complex,device->ampOut,device->phImg);
 }

@@ -71,6 +71,12 @@ void ImagePR::MakeGaussian(float x_0,float y_0,float var_x, float var_y){
             gray_array[y*width+x]=val;
         }
 }
+void ImagePR::SetPixel(int x, int y){
+    cv::Vec3b & color = image.at<cv::Vec3b>(cv::Point(x,y));
+    unsigned char & colorG = gray_image.at<unsigned char>(cv::Point(x,y));
+    colorG=color[2]=color[1]=color[0]=255;
+    gray_array[y*width+x]=255;
+}
 
 void ImagePR::show(const char *title){
     cv::namedWindow(title, cv::WINDOW_AUTOSIZE );

@@ -51,12 +51,15 @@ enum PR_Type{
  * 
  */
 struct DeviceMemory{
-	float *damp,*illum,*amp,*phase,*intensity;
+	float *damp,*illum,*amp,*ampOut,*phSLM,*phImg,*intensity;
 	cuComplex *complex;
+	unsigned int *ROI;
 };
 struct HostMemory{
-	float *damp,*illum,*intensity,*phase,*amp;
+	float *damp,*illum,*amp,*ampOut,*phSLM,*phImg,*intensity;
 	cuComplex *complex;
+	int nx,ny,n_ROI=0;
+	unsigned int *ROI=NULL;
 };
 
 /**
@@ -87,13 +90,16 @@ protected:
 public:
 	OpBlocks(int nx,int ny);
 	~OpBlocks();
+	void ZeroArray(float* d_array,size_t n_bytes);
 	void SLM_To_Obj(cuComplex *d_SLM,cuComplex *d_Obj);
 	void Obj_to_SLM(cuComplex *d_Obj,cuComplex *d_SLM);
 	void Compose(cuComplex *d_signal,float *d_amp,float *d_phase);
 	void Decompose(cuComplex *d_signal,float *d_amp,float *d_phase);
 	void RandomArray(float* d_array,float min, float max);
 	void Normalize(float *d_quantity);
+	void Intensity(float *d_amp,float *d_intensity);
 	void NormalizedIntensity(float *d_amp, float *d_int);
+	float Uniformity(float *d_signal,unsigned int *d_ROI,unsigned int n_ROI);
 };
 
 
@@ -114,7 +120,8 @@ protected:
 public:
 	PhaseRetrievalAlgorithm(OpBlocks *operation,DeviceMemory *device,HostMemory *host):device(device),host(host),operation(operation){};
 	virtual ~PhaseRetrievalAlgorithm(){};
-	virtual void OneIteration()=0;
+	virtual void OneIteration() = 0;
+	virtual void Initialize() = 0;
 };
 
 class GS_ALG:public PhaseRetrievalAlgorithm{
@@ -122,13 +129,16 @@ public:
 	GS_ALG(OpBlocks *operation,DeviceMemory *device,HostMemory *host):PhaseRetrievalAlgorithm(operation,device,host){};
 	~GS_ALG(){};
 	void OneIteration();
+	void Initialize();
 };
 
 class MRAF_ALG:public PhaseRetrievalAlgorithm{
 public:
 	MRAF_ALG(OpBlocks *operation,DeviceMemory *device,HostMemory *host):PhaseRetrievalAlgorithm(operation,device,host){};
 	~MRAF_ALG(){};
-	void OneIteration(){};
+	void OneIteration();
+	void Initialize(){};
+	void Initialize(float threshold);
 };
 
 class Wang_ALG:public PhaseRetrievalAlgorithm{
@@ -136,6 +146,7 @@ public:
 	Wang_ALG(OpBlocks *operation,DeviceMemory *device,HostMemory *host):PhaseRetrievalAlgorithm(operation,device,host){};
 	~Wang_ALG(){};
 	void OneIteration(){};
+	void Initialize(){};
 };
 
 class AlgorithmCreator{

@@ -16,9 +16,13 @@
 
 int main(int argc, char **argv){
 
-	ImagePR desired(argv[1]); 
+	ImagePR desired(300,300); 
+	Square square1(desired,10,10);
+	Pattern pattern1(desired,3,3,30,30);
+	pattern1.setElement(square1);
+	pattern1.Draw(115,115);
 	ImagePR illumination(desired.GetHeight(),desired.GetWidth(),cv::COLORMAP_JET);
-	illumination.MakeGaussian((desired.GetWidth()-1)/2.0,(desired.GetHeight()-1)/2.0,50.,50.);
+	illumination.MakeGaussian((desired.GetWidth()-1)/2.0,(desired.GetHeight()-1)/2.0,5000000.,5000000.);
 
 	PhaseRetrieve transfs(desired.GetGray(),desired.GetHeight(),desired.GetWidth(),Gerchberg_Saxton);
 	transfs.SetIllumination(illumination.GetGray());

@@ -100,4 +100,13 @@ void max_kernel(float *d_in,float *d_max,int *mutex,unsigned int length);
 __global__
 void min_kernel(float *d_in,float *d_max,int *mutex,unsigned int length);
 
+__global__
+void minmax_kernel(float *d_signal,float *d_min, float *d_max,int *mutex, unsigned int length);
+
+__global__
+void minmaxROI_kernel(float *d_signal,float *d_min, float *d_max,int *mutex,unsigned int *ROI, unsigned int nROI);
+
+__global__
+void sumROI_kernel(float *d_signal,float *d_sum,int *mutex,unsigned int *ROI, unsigned int nROI);
+
 #endif
