@@ -76,7 +76,7 @@ void ImagePR::show(const char *title){
     cv::namedWindow(title, cv::WINDOW_AUTOSIZE );
     cv::Mat im_color;
     cv::applyColorMap(gray_image,im_color,color_display);
-    char buffer[100]="../Images/'";    strcat(buffer,title);   strcat(buffer,".jpg");   strcat(buffer,"'"); space2underscore(buffer,100);
+    char buffer[100]="../Images/";    strcat(buffer,title);   strcat(buffer,".jpg");  space2underscore(buffer,100);
     printf("%s writing path is: %s\n",title,buffer);
     cv::imwrite(buffer,im_color);
     cv::imshow(title, im_color);

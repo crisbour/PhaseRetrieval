@@ -1,7 +1,7 @@
 /*
  * kernels.cu
  *
- *  Created on: 6 May 2020
+ *  Created on: 9 May 2020
  *      Author: Cristian Bourceanu
  */
 #include "kernels.h"
