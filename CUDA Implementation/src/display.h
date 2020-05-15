@@ -35,6 +35,8 @@ public:
 class Drawing{
 public:
     virtual void Draw(int x, int y)=0;
+    int Width(){return 0;}
+    int Height(){return 0;}
 };
 
 class Square:public Drawing{
@@ -43,6 +45,8 @@ private:
     ImagePR &image;
 public:
     Square(ImagePR &image,int dx, int dy):image(image),dx(dx),dy(dy){};
+    int Width()const{return dx;};
+    int Height()const{return dx;};
     ~Square(){};
     void Draw(int x, int y){
         for(int i=0;i<dx;i++)
@@ -54,15 +58,34 @@ class Pattern:public Drawing{
 private:
     int dx,dy,nx,ny;
     ImagePR &image;
-    Drawing *pattern_elem;
+    Drawing *elem;
 public:
     Pattern(ImagePR &image,int nx,int ny, int dx, int dy):image(image),nx(nx),ny(ny),dx(dx),dy(dy){};
     ~Pattern(){};
-    void setElement(Drawing &elem){pattern_elem=&elem;};
+    int Width()const{return dx*(nx-1)+elem->Width();};
+    int Height()const{return dx*(nx-1)+elem->Height();};
+    void setElement(Drawing &_elem){elem=&_elem;};
     void Draw(int x, int y){
         for(int i=0;i<nx;i++)
             for(int j=0;j<ny;j++)
-                pattern_elem->Draw(x+i*dx,y+j*dy);
+                elem->Draw(x+i*dx,y+j*dy);
+    };
+};
+class MeshPattern:public Drawing{
+private:
+    int step,n;
+    Drawing &elem;
+    ImagePR &image;
+public:
+    MeshPattern(ImagePR &image,int n, int step, Drawing *_elem):image(image),elem(*_elem),n(n),step(step){};
+    ~MeshPattern(){delete &elem;};
+    void Draw(int x, int y){
+        Pattern* pattern=new Pattern(image,n,n,step,step);
+        pattern->setElement(elem);
+        int wi=image.GetWidth(); int hi=image.GetHeight();
+        int wd=pattern->Width(); int hd=pattern->Height();
+        pattern->Draw(x+(wi-wd)/2,y+(hi-hd)/2);
+        delete pattern;
     };
 };
 

@@ -137,8 +137,7 @@ public:
 	MRAF_ALG(OpBlocks *operation,DeviceMemory *device,HostMemory *host):PhaseRetrievalAlgorithm(operation,device,host){};
 	~MRAF_ALG(){};
 	void OneIteration();
-	void Initialize(){};
-	void Initialize(float threshold);
+	void Initialize();
 };
 
 class Wang_ALG:public PhaseRetrievalAlgorithm{
@@ -189,10 +188,12 @@ public:
 	void SetIllumination(float *illum_img);		//To do
 	void SetIllumination();
 	void SetAlgorithm(PR_Type type);
-	float* GetImage();
-	float* GetPhaseMask();
+	void FindROI(float threshold);
 	void Compute(int n_iter=0);
 	void Test();
+	float* GetImage();
+	float* GetPhaseMask();
+
 	unsigned int index(unsigned int i, unsigned int j);
 };
 

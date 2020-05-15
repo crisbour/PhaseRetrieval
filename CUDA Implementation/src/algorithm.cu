@@ -66,7 +66,7 @@ void OpBlocks::Normalize(float *d_quantity){
 	CUBLAS_CALL(cublasSscal(handle_cublas,nx*ny,&scale,d_quantity,1));
 	cudaDeviceSynchronize();
 	addFloatArray_kernel<<<(nx*ny+1023)/1024,1024>>>(d_quantity,nx*ny,-h_min/(h_max-h_min));		//Couldn't find cublas to add scalar to an array
-	printf("(min,max)=(%f,%f)\n",h_min,h_max);
+	//printf("(min,max)=(%f,%f)\n",h_min,h_max);
 }
 void OpBlocks::Intensity(float *d_amp,float *d_intensity){
 	amplitudeToIntensity_kernel<<<(nx*ny+1023)/1024,1024>>>(d_amp,d_intensity,nx*ny);
@@ -173,6 +173,17 @@ void PhaseRetrieve::SetIllumination(){
 			host->illum[index(i,j)]=sqrt(255);
 	CUDA_CALL(cudaMemcpy(device->illum,host->illum,nx*ny*sizeof(float),cudaMemcpyHostToDevice));
 }
+void PhaseRetrieve::FindROI(float threshold){
+	if(host->n_ROI==0){
+		host->ROI=(unsigned int*)malloc(host->nx*host->ny*sizeof(unsigned int));
+		for(unsigned int i=0;i<host->nx*host->ny;i++)
+			if(host->damp[i]>threshold){
+				host->ROI[host->n_ROI++]=i;
+			}
+		CUDA_CALL(cudaMalloc((void**)&device->ROI,host->n_ROI*sizeof(unsigned int)));
+		CUDA_CALL(cudaMemcpy(device->ROI,host->ROI,host->n_ROI*sizeof(unsigned int),cudaMemcpyHostToDevice));
+	}
+}
 unsigned int PhaseRetrieve::index(unsigned int i, unsigned int j){
 	return nx*i+j;
 }
@@ -181,10 +192,13 @@ void PhaseRetrieve::Test(){
 	operation->RandomArray(device->phImg,-M_PI,M_PI);
 	operation->RandomArray(device->phSLM,-M_PI,M_PI);
 
+	FindROI(sqrt(255)/2);
 	algorithm->Initialize();
 
-	for(int i=0;i<1000;i++){
+	for(int i=0;i<50;i++){
 		algorithm->OneIteration();
+		// if(host->n_ROI)
+		// 	printf("Uniformity:%f\n",operation->Uniformity(device->intensity,device->ROI,host->n_ROI));
 	}
 
 	operation->NormalizedIntensity(device->ampOut,device->intensity);
@@ -232,19 +246,11 @@ void GS_ALG::OneIteration(){
 	operation->Compose(device->complex,device->illum,device->phSLM);
 	operation->SLM_To_Obj(device->complex,device->complex);
 	operation->Decompose(device->complex,device->ampOut,device->phImg);
+	operation->Intensity(device->ampOut,device->intensity);
 }
 
-void MRAF_ALG::Initialize(float threshold){
+void MRAF_ALG::Initialize(){
 	//operation->ZeroArray(device->ampOut,host->nx * host->ny);
-	if(host->n_ROI==0){
-	host->ROI=(unsigned int*)malloc(host->nx*host->ny*sizeof(unsigned int));
-	for(unsigned int i=0;i<host->nx*host->ny;i++)
-		if(host->damp[i]>threshold){
-			host->ROI[host->n_ROI++]=i;
-		}
-		CUDA_CALL(cudaMalloc((void**)&device->ROI,host->n_ROI*sizeof(unsigned int)));
-		CUDA_CALL(cudaMemcpy(device->ROI,host->ROI,host->n_ROI*sizeof(unsigned int),cudaMemcpyHostToDevice));
-	}
 }
 void MRAF_ALG::OneIteration(){
 	//CUBLAS_CALL();

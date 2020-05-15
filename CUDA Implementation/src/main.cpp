@@ -16,11 +16,14 @@
 
 int main(int argc, char **argv){
 
-	ImagePR desired(300,300); 
-	Square square1(desired,10,10);
-	Pattern pattern1(desired,3,3,30,30);
-	pattern1.setElement(square1);
-	pattern1.Draw(115,115);
+	ImagePR desired(1000,1000); 
+	// Square square1(desired,10,10);
+	// Pattern pattern1(desired,3,3,30,30);
+	// pattern1.setElement(square1);
+	// pattern1.Draw(115,115);
+	MeshPattern pattern(desired,2,150,new Square(desired,60,60));
+	pattern.Draw(0,0);
+
 	ImagePR illumination(desired.GetHeight(),desired.GetWidth(),cv::COLORMAP_JET);
 	illumination.MakeGaussian((desired.GetWidth()-1)/2.0,(desired.GetHeight()-1)/2.0,5000000.,5000000.);
 
@@ -35,7 +38,7 @@ int main(int argc, char **argv){
 	ImagePR reconst(desired.GetHeight(),desired.GetWidth());
 	reconst.SetGray(transfs.GetImage());
 
-	ImagePR phase(desired.GetHeight(),desired.GetWidth(),cv::COLORMAP_JET);
+	ImagePR phase(desired.GetHeight(),desired.GetWidth(),cv::COLORMAP_HOT);
 	phase.SetGray(transfs.GetPhaseMask());
 
 	illumination.show("Illumination");
