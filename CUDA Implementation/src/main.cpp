@@ -17,8 +17,11 @@
 int main(int argc, char **argv){
 
 	ImagePR desired(argv[1]); 
+	ImagePR illumination(desired.GetHeight(),desired.GetWidth(),cv::COLORMAP_JET);
+	illumination.MakeGaussian((desired.GetWidth()-1)/2.0,(desired.GetHeight()-1)/2.0,500.,500.);
 
 	PhaseRetrieve transfs(desired.GetGray(),desired.GetHeight(),desired.GetWidth(),Gerchberg_Saxton);
+	transfs.SetIllumination(illumination.GetGray());
 
 	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 	transfs.Test();
@@ -28,12 +31,13 @@ int main(int argc, char **argv){
 	ImagePR reconst(desired.GetHeight(),desired.GetWidth());
 	reconst.SetGray(transfs.GetImage());
 
-	ImagePR phase(desired.GetHeight(),desired.GetWidth());
+	ImagePR phase(desired.GetHeight(),desired.GetWidth(),cv::COLORMAP_JET);
 	phase.SetGray(transfs.GetPhaseMask());
 
+	illumination.show("Illumination");
 	desired.show("Desired Image");
-	reconst.show("Reconstructed Image");
 	phase.show("Phase Mask");
+	reconst.show("Reconstructed Image");
 	// cv::Mat image(desired.GetHeight(),desired.GetWidth(),CV_8U);
     // cv::putText(image, "Hello World!", cv::Point( 100, 200 ), cv::FONT_HERSHEY_SIMPLEX | cv::FONT_ITALIC, 1.0, cv::Scalar( 0, 0, 0 ));
     // cv::imshow("My Window", image);

@@ -1,14 +1,20 @@
 #include "display.h"
 
-ImagePR::ImagePR(int height, int width): width(width),height(height)
+void space2underscore(char *str,int length){
+    for(int i=0;i<length;i++)
+        if(str[i]==' ')
+            str[i]='_';
+}
+
+ImagePR::ImagePR(int height, int width,int coloring): width(width),height(height),color_display(coloring)
 {
     image=cv::Mat(height,width,CV_8UC3);
-    gray_image=cv::Mat(height,width,CV_8U);
+    gray_image=cv::Mat(height,width,cv::IMREAD_GRAYSCALE);
     gray_array=(float*)malloc(height*width*sizeof(float));
 }
 
-ImagePR::ImagePR(const char *path){
-    image = cv::imread( path, CV_8S);
+ImagePR::ImagePR(const char *path,int coloring):color_display(coloring){
+    image = cv::imread( path, cv::IMREAD_COLOR);
     if( !image.data )
 	{
 	  printf( "No image data \n" );
@@ -48,8 +54,24 @@ void ImagePR::SetGray(float *array){
             gray_array[y*width+x]=array[y*width+x];
         }
 }
+void ImagePR::MakeGaussian(float x_0,float y_0,float var_x, float var_y){
+    float val=0;
+    for(int y=0;y<height;y++)
+        for(int x=0;x<width;x++){
+            val=255*exp(-(pow(x-x_0,2)/(2*var_x)+pow(y-y_0,2)/var_y));
+            cv::Vec3b & color = image.at<cv::Vec3b>(cv::Point(x,y));
+            unsigned char & colorG = gray_image.at<unsigned char>(cv::Point(x,y));
+            colorG=color[2]=color[1]=color[0]=(unsigned char) val;
+            gray_array[y*width+x]=val;
+        }
+}
 
 void ImagePR::show(const char *title){
     cv::namedWindow(title, cv::WINDOW_AUTOSIZE );
-    cv::imshow(title, gray_image);
+    cv::Mat im_color;
+    cv::applyColorMap(gray_image,im_color,color_display);
+    char buffer[100]="../Images/'";    strcat(buffer,title);   strcat(buffer,".jpg");   strcat(buffer,"'"); space2underscore(buffer,100);
+    printf("%s writing path is: %s\n",title,buffer);
+    cv::imwrite(buffer,im_color);
+    cv::imshow(title, im_color);
 }

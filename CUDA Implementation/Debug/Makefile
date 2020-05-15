@@ -9,7 +9,7 @@ all:
 	nvcc $(CFLAGS) -c ../src/algorithm.cu -o algorithm.o
 	nvcc $(CFLAGS) -c ../src/kernels.cu -o kernels.o
 	$(CXX) $(CFLAGS) -c ../src/display.cpp -o display.o
-	$(CXX) $(LDFLAGS) main.o algorithm.o kernels.o display.o -o showFFT
+	$(CXX) $(LDFLAGS) main.o algorithm.o kernels.o display.o -o showGS
 
 clean:
 	rm -f Debug/*.o Debug/showFFT
