@@ -35,6 +35,7 @@ public:
 class Drawing{
 public:
     virtual void Draw(int x, int y)=0;
+    ~Drawing(){};
     int Width(){return 0;}
     int Height(){return 0;}
 };
@@ -60,7 +61,7 @@ private:
     ImagePR &image;
     Drawing *elem;
 public:
-    Pattern(ImagePR &image,int nx,int ny, int dx, int dy):image(image),nx(nx),ny(ny),dx(dx),dy(dy){};
+    Pattern(ImagePR &_image,int _nx,int _ny, int _dx, int _dy):image(image),nx(_nx),ny(_ny),dx(_dx),dy(_dy){};
     ~Pattern(){};
     int Width()const{return dx*(nx-1)+elem->Width();};
     int Height()const{return dx*(nx-1)+elem->Height();};
@@ -73,9 +74,9 @@ public:
 };
 class MeshPattern:public Drawing{
 private:
-    int step,n;
-    Drawing &elem;
     ImagePR &image;
+    int n, step;
+    Drawing &elem;
 public:
     MeshPattern(ImagePR &image,int n, int step, Drawing *_elem):image(image),elem(*_elem),n(n),step(step){};
     ~MeshPattern(){delete &elem;};

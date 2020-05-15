@@ -13,15 +13,24 @@
 #include "display.h"
 #include "algorithm.h"
 
+void printData(const char* data_name,std::vector<float>data){
+	FILE *File;
+	char filePath[100]="../Data/";
+	strcat(filePath,data_name); strcat(filePath,".txt");
+	File=fopen(filePath,"w+");
+	fprintf(File,"%u\n",data.size());
+	for(unsigned int i=0;i<data.size();i++){
+		fprintf(File,"%f\n",data[i]);
+	}
 
+}
 int main(int argc, char **argv){
-
 	ImagePR desired(1000,1000); 
 	// Square square1(desired,10,10);
 	// Pattern pattern1(desired,3,3,30,30);
 	// pattern1.setElement(square1);
 	// pattern1.Draw(115,115);
-	MeshPattern pattern(desired,2,150,new Square(desired,60,60));
+	MeshPattern pattern(desired,4,20,new Square(desired,3,3));
 	pattern.Draw(0,0);
 
 	ImagePR illumination(desired.GetHeight(),desired.GetWidth(),cv::COLORMAP_JET);
@@ -34,6 +43,9 @@ int main(int argc, char **argv){
 	transfs.Test();
 	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 	printf("Elapse time: %f milliseconds\n",std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000.0);
+
+	printData("Uniformity",transfs.GetUniformity());
+
 
 	ImagePR reconst(desired.GetHeight(),desired.GetWidth());
 	reconst.SetGray(transfs.GetImage());

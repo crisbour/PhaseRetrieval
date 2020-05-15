@@ -10,6 +10,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <vector>
 #include <cuda_runtime_api.h>
 #include <cuda_runtime.h>
 #include <cuda.h>
@@ -42,8 +43,7 @@ enum PR_Type{
 	Gerchberg_Saxton,
 	MRAF,
 	Wang,
-	HIO,
-	Mine
+	Weighted_GS
 };
 
 /**
@@ -51,15 +51,16 @@ enum PR_Type{
  * 
  */
 struct DeviceMemory{
-	float *damp,*illum,*amp,*ampOut,*phSLM,*phImg,*intensity;
+	float *damp,*illum,*amp,*ampOut,*phSLM,*phImg,*intensity,*dint;
 	cuComplex *complex;
 	unsigned int *ROI;
 };
 struct HostMemory{
-	float *damp,*illum,*amp,*ampOut,*phSLM,*phImg,*intensity;
+	float *damp,*illum,*amp,*ampOut,*phSLM,*phImg,*intensity,*dint;
 	cuComplex *complex;
 	int nx,ny,n_ROI=0;
 	unsigned int *ROI=NULL;
+	std::vector<float> uniformity;
 };
 
 /**
@@ -90,11 +91,14 @@ protected:
 public:
 	OpBlocks(int nx,int ny);
 	~OpBlocks();
+	cublasHandle_t& GetCUBLAS();
 	void ZeroArray(float* d_array,size_t n_bytes);
 	void SLM_To_Obj(cuComplex *d_SLM,cuComplex *d_Obj);
 	void Obj_to_SLM(cuComplex *d_Obj,cuComplex *d_SLM);
 	void Compose(cuComplex *d_signal,float *d_amp,float *d_phase);
 	void Decompose(cuComplex *d_signal,float *d_amp,float *d_phase);
+	void Sum(float *d_adto,float *d_increment);
+	void Scale(float *d_signal,float scaling);
 	void RandomArray(float* d_array,float min, float max);
 	void Normalize(float *d_quantity);
 	void Intensity(float *d_amp,float *d_intensity);
@@ -114,11 +118,11 @@ public:
  */
 class PhaseRetrievalAlgorithm{
 protected:
-	DeviceMemory *device;
-	HostMemory *host;
+	DeviceMemory &device;
+	HostMemory &host;
 	OpBlocks *operation;
 public:
-	PhaseRetrievalAlgorithm(OpBlocks *operation,DeviceMemory *device,HostMemory *host):device(device),host(host),operation(operation){};
+	PhaseRetrievalAlgorithm(OpBlocks *operation,DeviceMemory &device,HostMemory &host):device(device),host(host),operation(operation){};
 	virtual ~PhaseRetrievalAlgorithm(){};
 	virtual void OneIteration() = 0;
 	virtual void Initialize() = 0;
@@ -126,7 +130,7 @@ public:
 
 class GS_ALG:public PhaseRetrievalAlgorithm{
 public:
-	GS_ALG(OpBlocks *operation,DeviceMemory *device,HostMemory *host):PhaseRetrievalAlgorithm(operation,device,host){};
+	GS_ALG(OpBlocks *operation,DeviceMemory &device,HostMemory &host):PhaseRetrievalAlgorithm(operation,device,host){};
 	~GS_ALG(){};
 	void OneIteration();
 	void Initialize();
@@ -134,7 +138,7 @@ public:
 
 class MRAF_ALG:public PhaseRetrievalAlgorithm{
 public:
-	MRAF_ALG(OpBlocks *operation,DeviceMemory *device,HostMemory *host):PhaseRetrievalAlgorithm(operation,device,host){};
+	MRAF_ALG(OpBlocks *operation,DeviceMemory &device,HostMemory &host):PhaseRetrievalAlgorithm(operation,device,host){};
 	~MRAF_ALG(){};
 	void OneIteration();
 	void Initialize();
@@ -142,15 +146,22 @@ public:
 
 class Wang_ALG:public PhaseRetrievalAlgorithm{
 public:
-	Wang_ALG(OpBlocks *operation,DeviceMemory *device,HostMemory *host):PhaseRetrievalAlgorithm(operation,device,host){};
+	Wang_ALG(OpBlocks *operation,DeviceMemory &device,HostMemory &host):PhaseRetrievalAlgorithm(operation,device,host){};
 	~Wang_ALG(){};
 	void OneIteration(){};
 	void Initialize(){};
 };
+class WGS_ALG:public PhaseRetrievalAlgorithm{
+public:
+	WGS_ALG(OpBlocks *operation,DeviceMemory &device,HostMemory &host):PhaseRetrievalAlgorithm(operation,device,host){};
+	~WGS_ALG(){};
+	void OneIteration();
+	void Initialize();
+};
 
 class AlgorithmCreator{
 public:
-	PhaseRetrievalAlgorithm *FactoryMethod(OpBlocks *operation,DeviceMemory *device,HostMemory *host,PR_Type type){
+	PhaseRetrievalAlgorithm *FactoryMethod(OpBlocks *operation,DeviceMemory &device,HostMemory &host,PR_Type type){
 		if(type == Gerchberg_Saxton)	return new GS_ALG(operation,device, host);
 		if(type == MRAF)				return new MRAF_ALG(operation,device, host);
 		if(type == Wang)				return new Wang_ALG(operation,device, host);
@@ -174,8 +185,8 @@ public:
 class PhaseRetrieve{
 protected:
 	unsigned int nx,ny;
-	DeviceMemory *device=new DeviceMemory;
-	HostMemory *host=new HostMemory;
+	DeviceMemory device;
+	HostMemory host;
 	OpBlocks *operation = NULL;
 	PhaseRetrievalAlgorithm *algorithm = NULL;
 	float *h_out_img,*h_out_phase;
@@ -193,6 +204,7 @@ public:
 	void Test();
 	float* GetImage();
 	float* GetPhaseMask();
+	std::vector<float>& GetUniformity();
 
 	unsigned int index(unsigned int i, unsigned int j);
 };
