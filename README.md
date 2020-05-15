@@ -13,7 +13,7 @@ Ultra fast computation of Gerchberg-Saxton algorithm and other similar phase ret
   - Decompose: Find amplitude and phase of a complex signal
   - SLM_To_Obj: FFT => Projection in image plane
   - Obj_To_Obj: IFFT => Projection from image plane to SLM plane (exit pupils plane multiplied by constant phase term)
-  - Normalize: $u=(u-min(u))/(max(u)-min(u))$
+  - Normalize: <img src="https://render.githubusercontent.com/render/math?math=u_{norm}=\frac{u-u_{min}}{u_{max}-u_{min}}">
 - Call Algorithm to iterate
 3. Algorithm
 - Factory method to choose an algorithm to solve the problem. Implemented algorithm:
