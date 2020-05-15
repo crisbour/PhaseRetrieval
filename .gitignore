@@ -1,2 +1,2 @@
 #Ignore compiled files
-*.o
+/'CUDA Implementation'/Debug/*.o
