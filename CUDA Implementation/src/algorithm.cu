@@ -202,18 +202,18 @@ unsigned int PhaseRetrieve::index(unsigned int i, unsigned int j){
 	return nx*i+j;
 }
 void PhaseRetrieve::Test(){
-
+	
 	operation->RandomArray(device.phImg,-M_PI,M_PI);
 	operation->RandomArray(device.phSLM,-M_PI,M_PI);
 
 	FindROI(sqrt(255)/2);
 	algorithm->Initialize();
-
+	
 	for(int i=0;i<50;i++){
-		if(i==4) SetAlgorithm(MRAF);
+		//if(i==4) SetAlgorithm(MRAF);
 		algorithm->OneIteration();
-		if(host.n_ROI)
-			host.uniformity.push_back(operation->Uniformity(device.intensity,device.ROI,host.n_ROI));
+		// if(host.n_ROI)
+		// 	host.uniformity.push_back(operation->Uniformity(device.intensity,device.ROI,host.n_ROI));
 	}
 
 	operation->NormalizedIntensity(device.ampOut,device.intensity);

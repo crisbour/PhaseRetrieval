@@ -10,8 +10,20 @@
 #include <opencv2/opencv.hpp>
 #include <cmath>
 
-
-class ImagePR
+class ImagePR_Interface{
+protected:
+    int width,height;
+public:
+    ~ImagePR_Interface(){};
+    virtual float* GetGray()=0;
+    virtual void SetGray(float *array)=0;
+    virtual void MakeGaussian(float x_0,float y_0,float var_x, float var_y)=0;
+    virtual int GetWidth()const{return width;};
+    virtual int GetHeight()const{return height;};
+    virtual void SetPixel(int x, int y)=0;
+    virtual void show(const char *title)=0;
+};
+class ImagePR:public ImagePR_Interface
 {
 protected:
     float *gray_array;
