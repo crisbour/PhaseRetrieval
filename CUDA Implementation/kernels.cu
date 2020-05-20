@@ -368,3 +368,52 @@ void addROI_kernel(float *d_in,float scale_in,float *d_out,float scale_out,unsig
     }
     __syncthreads();
 }
+
+__global__
+void sqrt_kernel(float *d_signal_in,float *d_signal_out,unsigned int length){
+    unsigned int index=threadIdx.x+blockIdx.x*blockDim.x;
+
+    if(index<length){
+        d_signal_out[index]=sqrtf(d_signal_in[index]);
+    }
+    __syncthreads();
+}
+
+__global__
+void norm2_kernel(float *d_signal, float *d_sum, int *mutex, unsigned int length){
+    __shared__ float data[1024];
+    unsigned int tid = threadIdx.x;
+    unsigned int index = blockIdx.x*blockDim.x + threadIdx.x;
+    unsigned int stride = blockDim.x*gridDim.x;
+    unsigned int offset=0;
+
+    float temp = 0;
+    if(index==0){              //Set d_max to infinity only once to avoid racing condition
+        *d_sum=0;
+    }
+    while(index+offset<length){
+        temp += d_signal[index+offset]*d_signal[index+offset];
+        offset= offset + stride;
+    }
+
+    data[tid] = temp;
+    
+    
+    if(index<length)
+    for(unsigned int s=blockDim.x/2;s>0;s>>=1){
+        if(tid<s)
+            data[tid]=data[tid]+data[tid+s];  
+        __syncthreads();
+    }
+    
+    if(tid == 0){
+        while(atomicCAS(mutex,0,1));
+        *d_sum = *d_sum+ data[0];
+        atomicExch(mutex,0);
+    }
+    __syncthreads();
+
+    if(index==0)
+        *d_sum=sqrtf(*d_sum);
+    __syncthreads();
+}

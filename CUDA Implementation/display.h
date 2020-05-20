@@ -14,7 +14,8 @@ class ImagePR_Interface{
 protected:
     int width,height;
 public:
-    ~ImagePR_Interface(){};
+    virtual ~ImagePR_Interface(){};
+    virtual void SetDimensions(int _width, int _height){width=_width;height=_height;};
     virtual float* GetGray()=0;
     virtual void SetGray(float *array)=0;
     virtual void MakeGaussian(float x_0,float y_0,float var_x, float var_y)=0;
@@ -26,13 +27,12 @@ public:
 class ImagePR:public ImagePR_Interface
 {
 protected:
-    float *gray_array;
-    int width, height;
+    float *gray_array=NULL;
     cv::Mat image;
     cv::Mat gray_image;
     int color_display;
 public:
-    ImagePR(int height, int width,int coloring=cv::COLORMAP_HOT);
+    ImagePR(int width, int height,int coloring=cv::COLORMAP_HOT);
     ImagePR(const char *path,int coloring=cv::COLORMAP_HOT);
     ~ImagePR();
     float* GetGray();
@@ -47,18 +47,18 @@ public:
 
 class Drawing{
 public:
-    virtual void Draw(int x, int y)=0;
     ~Drawing(){};
     int Width(){return 0;}
     int Height(){return 0;}
+    virtual void Draw(int x, int y)=0;
 };
 
 class Square:public Drawing{
 private:
+    ImagePR_Interface &image;
     int dx,dy;
-    ImagePR &image;
 public:
-    Square(ImagePR &image,int dx, int dy):image(image),dx(dx),dy(dy){};
+    Square(ImagePR_Interface &image,int dx, int dy):image(image),dx(dx),dy(dy){};
     int Width()const{return dx;};
     int Height()const{return dx;};
     ~Square(){};
@@ -70,32 +70,31 @@ public:
 };
 class Pattern:public Drawing{
 private:
+    ImagePR_Interface &image;
     int dx,dy,nx,ny;
-    ImagePR &image;
-    Drawing *elem;
+    Drawing &elem;
 public:
-    Pattern(ImagePR &_image,int _nx,int _ny, int _dx, int _dy):image(image),nx(_nx),ny(_ny),dx(_dx),dy(_dy){};
-    ~Pattern(){};
-    int Width()const{return dx*(nx-1)+elem->Width();};
-    int Height()const{return dx*(nx-1)+elem->Height();};
-    void setElement(Drawing &_elem){elem=&_elem;};
+    Pattern(ImagePR_Interface &_image,int _nx,int _ny, int _dx, int _dy,Drawing &elem):image(image),nx(_nx),ny(_ny),dx(_dx),dy(_dy),elem(elem){};
+    virtual ~Pattern(){};
+    int Width()const{return dx*(nx-1)+elem.Width();};
+    int Height()const{return dx*(nx-1)+elem.Height();};
+    //void setElement(Drawing &_elem){&elem=_elem;};
     void Draw(int x, int y){
         for(int i=0;i<nx;i++)
             for(int j=0;j<ny;j++)
-                elem->Draw(x+i*dx,y+j*dy);
+                elem.Draw(x+i*dx,y+j*dy);
     };
 };
 class MeshPattern:public Drawing{
 private:
-    ImagePR &image;
+    ImagePR_Interface &image;
     int n, step;
     Drawing &elem;
 public:
-    MeshPattern(ImagePR &image,int n, int step, Drawing *_elem):image(image),elem(*_elem),n(n),step(step){};
-    ~MeshPattern(){delete &elem;};
+    MeshPattern(ImagePR_Interface &image,int n, int step, Drawing &_elem):image(image),elem(_elem),n(n),step(step){};
+    ~MeshPattern(){};
     void Draw(int x, int y){
-        Pattern* pattern=new Pattern(image,n,n,step,step);
-        pattern->setElement(elem);
+        Pattern* pattern=new Pattern(image,n,n,step,step,elem);
         int wi=image.GetWidth(); int hi=image.GetHeight();
         int wd=pattern->Width(); int hd=pattern->Height();
         pattern->Draw(x+(wi-wd)/2,y+(hi-hd)/2);

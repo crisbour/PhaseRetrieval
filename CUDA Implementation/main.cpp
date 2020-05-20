@@ -20,6 +20,7 @@ void printData(const char* data_name,std::vector<std::vector<float>>data){
 	strcat(filePath,data_name); strcat(filePath,".txt");
 	File=fopen(filePath,"w+");
 	fprintf(File,"%u\n",data[0].size());
+	fprintf(File,"Uniformity Accuracy Efficiency\n");
 	for(unsigned int i=0;i<data[0].size();i++){
 		fprintf(File,"%f %f %f\n",data[0][i],data[1][i],data[2][i]);
 	}
@@ -32,19 +33,21 @@ int main(int argc, char **argv){
 	// pattern1.Draw(115,115);
 	int spacing=12;
 	int nx_ny=5;
-	ImagePR *desired;
+	ImagePR_Interface *desired;
 	if(argc==2)
-		desired=new ImagePR(argv[1]);
+		desired= new ImagePR(argv[1]);
 	else{
-		desired=new ImagePR(1080,1920); 
-		MeshPattern pattern(*desired,nx_ny,spacing,new Square(*desired,5,5));
+		desired= new ImagePR(200,200); 
+		Square spot(*desired,5,5);
+		MeshPattern pattern(*desired,nx_ny,spacing,spot);
 		pattern.Draw(0,0);
 	}
 
 	ImagePR illumination(desired->GetHeight(),desired->GetWidth(),cv::COLORMAP_JET);
 	illumination.MakeGaussian((desired->GetWidth()-1)/2.0,(desired->GetHeight()-1)/2.0,1000000.,1000000.);
 
-	PhaseRetrieve transfs(desired->GetGray(),desired->GetHeight(),desired->GetWidth(),Gerchberg_Saxton);
+	printf("(Width,Height)=(%d,%d)\n",desired->GetWidth(),desired->GetHeight());
+	PhaseRetrieve transfs(desired->GetGray(),desired->GetWidth(),desired->GetHeight(),Gerchberg_Saxton);
 	transfs.SetIllumination(illumination.GetGray());
 	
 	//transfs.SetROI(959.5,539.5,100);

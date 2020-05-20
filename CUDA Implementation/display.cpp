@@ -12,11 +12,14 @@ void space2underscore(char *str,int length){
             str[i]='_';
 }
 
-ImagePR::ImagePR(int height, int width,int coloring): width(width),height(height),color_display(coloring)
+ImagePR::ImagePR(int width, int height,int coloring):color_display(coloring)
 {
+    SetDimensions(width,height);
     image=cv::Mat(height,width,CV_8UC3);
     gray_image=cv::Mat(height,width,cv::IMREAD_GRAYSCALE);
+    printf("Dim=%d",height*width);
     gray_array=(float*)malloc(height*width*sizeof(float));
+    printf("Memory allocated for blank image\n");
 }
 
 ImagePR::ImagePR(const char *path,int coloring):color_display(coloring){
@@ -26,20 +29,22 @@ ImagePR::ImagePR(const char *path,int coloring):color_display(coloring){
 	  printf( "No image data \n" );
 	  exit(-1);
 	}
-    width = image.cols;
-    height = image.rows;
+    SetDimensions(image.cols,image.rows);
+
     cv::cvtColor(image,gray_image,cv::COLOR_BGR2GRAY);
     gray_array=(float*)malloc(height*width*sizeof(float));
+    printf("Memory allocated for inserted image\n");
 }
 
 ImagePR::~ImagePR()
 {
-    free(gray_array);
+    if(gray_array)
+        free(gray_array);
     printf("Image object destructed successfully!\n");
 }
 
 float* ImagePR::GetGray(){
-    float temp;
+     printf("Get %d\n",height*width);
     for(int i=0;i<height;i++)
         for(int j=0;j<width;j++){
             //cv::Vec3b color = image.at<cv::Vec3b>(cv::Point(j,i));

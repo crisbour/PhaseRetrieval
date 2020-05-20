@@ -121,4 +121,10 @@ void accuracy_kernel(float *d_iOut,float *d_di,float *d_min,float *d_max,int *mu
 __global__
 void efficiency_kernel(float *d_signal,float *d_sumSR,float *d_sum,int *mutex,unsigned int *ROI, unsigned int nROI, unsigned int length);
 
+__global__
+void norm2_kernel(float *d_signal, float *d_sum, int *mutex, unsigned int length);
+
+__global__
+void sqrt_kernel(float *d_signal_in,float *d_signal_out,unsigned int length);
+
 #endif

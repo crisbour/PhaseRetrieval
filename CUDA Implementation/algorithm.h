@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>
+#include <queue>
 #include <cuda_runtime_api.h>
 #include <cuda_runtime.h>
 #include <cuda.h>
@@ -18,7 +19,7 @@
 #include <curand.h>
 #include "cublas_v2.h"
 #include "kernels.h"
-#include <queue>
+
 
 //Macros to assert if cuda functions has been processed correctly 
 //If an error occurs it halts the program and it prints
@@ -90,6 +91,7 @@ protected:
 	curandStatus_t stat_curand;
 	int nx,ny;
 	float *d_min,*d_max;
+	double *d_sum;
 	int *d_mutex;
 
 public:
@@ -104,6 +106,7 @@ public:
 	void Scale(float *d_signal,float scaling);
 	void RandomArray(float* d_array,float min, float max);
 	void ZeroArray(float* d_array,size_t n_bytes);
+	void MapUnity(float *d_quantity);
 	void Normalize(float *d_quantity);
 	void Intensity(float *d_amp,float *d_intensity);
 	void NormalizedIntensity(float *d_amp, float *d_int);
