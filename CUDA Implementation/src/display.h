@@ -37,6 +37,7 @@ public:
     ~ImagePR();
     float* GetGray();
     void SetGray(float *array);
+    void SetGray(float *array, int width_original, int height_original);
     void MakeGaussian(float x_0,float y_0,float var_x, float var_y);
     int GetWidth()const{return width;};
     int GetHeight()const{return height;};
@@ -63,7 +64,7 @@ public:
     ~Square(){};
     void Draw(int x, int y){
         for(int i=0;i<dx;i++)
-            for(int j=0;j<=dy;j++)
+            for(int j=0;j<dy;j++)
             image.SetPixel(x+i,y+j);
     };
 };

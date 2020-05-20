@@ -50,6 +50,19 @@ float* ImagePR::GetGray(){
     return gray_array;
 }
 
+void ImagePR::SetGray(float *array, int width_original, int height_original){
+    int y_o,x_o;
+    for(int y=0;y<height;y++)
+        for(int x=0;x<width;x++){
+            //image.at<cv::Vec3b>(x,y)[0] = 200;
+            y_o=y+(height_original-height)/2;
+            x_o=x+(width_original-width)/2;
+            cv::Vec3b & color = image.at<cv::Vec3b>(cv::Point(x,y));
+            unsigned char & colorG = gray_image.at<unsigned char>(cv::Point(x,y));
+            colorG=color[2]=color[1]=color[0]=(unsigned char) array[y_o*width_original+x_o];
+            gray_array[y*width+x]=array[y_o*width_original+x_o];
+        }
+}
 void ImagePR::SetGray(float *array){
     for(int y=0;y<height;y++)
         for(int x=0;x<width;x++){
@@ -60,11 +73,12 @@ void ImagePR::SetGray(float *array){
             gray_array[y*width+x]=array[y*width+x];
         }
 }
+
 void ImagePR::MakeGaussian(float x_0,float y_0,float var_x, float var_y){
     float val=0;
     for(int y=0;y<height;y++)
         for(int x=0;x<width;x++){
-            val=255*exp(-(pow(x-x_0,2)/(2*var_x)+pow(y-y_0,2)/var_y));
+            val=255*exp(-(pow(x-x_0,2)/(2*var_x)+pow(y-y_0,2)/(2*var_y)));
             cv::Vec3b & color = image.at<cv::Vec3b>(cv::Point(x,y));
             unsigned char & colorG = gray_image.at<unsigned char>(cv::Point(x,y));
             colorG=color[2]=color[1]=color[0]=(unsigned char) val;

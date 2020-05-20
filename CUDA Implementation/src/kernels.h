@@ -67,6 +67,9 @@ void scaleFourier_kernel(cufftComplex *d_signal, unsigned int dim);
 __global__
 void scaleAmp_kernel(float *d_signal, unsigned int dim,float scale_factor);
 
+__global__
+void weight_kernel(float *d_w, float *d_ampOut_before, float *d_inOut,float *d_din, unsigned int *d_ROI,unsigned int n_ROI);
+
 /**
  * @brief Add real number to every element of an array.
  * 
@@ -108,5 +111,14 @@ void minmaxROI_kernel(float *d_signal,float *d_min, float *d_max,int *mutex,unsi
 
 __global__
 void sumROI_kernel(float *d_signal,float *d_sum,int *mutex,unsigned int *ROI, unsigned int nROI);
+
+__global__
+void addROI_kernel(float *d_in,float scale_in,float *d_out,float scale_out,unsigned int *ROI, unsigned int nROI);
+
+__global__
+void accuracy_kernel(float *d_iOut,float *d_di,float *d_min,float *d_max,int *mutex,unsigned int *ROI, unsigned int nROI);
+
+__global__
+void efficiency_kernel(float *d_signal,float *d_sumSR,float *d_sum,int *mutex,unsigned int *ROI, unsigned int nROI, unsigned int length);
 
 #endif

@@ -8,19 +8,20 @@
 #include <stdlib.h>
 #include <math.h>
 #include <chrono>
+
 #include <opencv2/opencv.hpp>
 
 #include "display.h"
 #include "algorithm.h"
 
-void printData(const char* data_name,std::vector<float>data){
+void printData(const char* data_name,std::vector<std::vector<float>>data){
 	FILE *File;
 	char filePath[100]="../Data/";
 	strcat(filePath,data_name); strcat(filePath,".txt");
 	File=fopen(filePath,"w+");
-	fprintf(File,"%u\n",data.size());
-	for(unsigned int i=0;i<data.size();i++){
-		fprintf(File,"%f\n",data[i]);
+	fprintf(File,"%u\n",data[0].size());
+	for(unsigned int i=0;i<data[0].size();i++){
+		fprintf(File,"%f %f %f\n",data[0][i],data[1][i],data[2][i]);
 	}
 
 }
@@ -29,34 +30,37 @@ int main(int argc, char **argv){
 	// Pattern pattern1(desired,3,3,30,30);
 	// pattern1.setElement(square1);
 	// pattern1.Draw(115,115);
+	int spacing=12;
+	int nx_ny=5;
 	ImagePR *desired;
 	if(argc==2)
 		desired=new ImagePR(argv[1]);
 	else{
-		desired=new ImagePR(1000,1000); 
-		MeshPattern pattern(*desired,4,20,new Square(*desired,1,1));
+		desired=new ImagePR(1080,1920); 
+		MeshPattern pattern(*desired,nx_ny,spacing,new Square(*desired,5,5));
 		pattern.Draw(0,0);
 	}
 
 	ImagePR illumination(desired->GetHeight(),desired->GetWidth(),cv::COLORMAP_JET);
-	illumination.MakeGaussian((desired->GetWidth()-1)/2.0,(desired->GetHeight()-1)/2.0,5000.,5000.);
+	illumination.MakeGaussian((desired->GetWidth()-1)/2.0,(desired->GetHeight()-1)/2.0,1000000.,1000000.);
 
 	PhaseRetrieve transfs(desired->GetGray(),desired->GetHeight(),desired->GetWidth(),Gerchberg_Saxton);
 	transfs.SetIllumination(illumination.GetGray());
 	
-
+	//transfs.SetROI(959.5,539.5,100);
 	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-	transfs.Test();
+	transfs.Test(50);
 	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 	printf("Elapse time: %f milliseconds\n",std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000.0);
 
-	//printData("Uniformity",transfs.GetUniformity());
+	printf("%s\n",transfs.GetName());
+	printData(transfs.GetName(),transfs.GetMetrics());
 
 
-	ImagePR reconst(desired->GetHeight(),desired->GetWidth(),cv::COLORMAP_TWILIGHT);
-	reconst.SetGray(transfs.GetImage());
+	ImagePR reconst(floor(nx_ny*spacing*1.4),floor(nx_ny*spacing*1.4));
+	reconst.SetGray(transfs.GetImage(),desired->GetWidth(),desired->GetHeight());
 
-	ImagePR phase(desired->GetHeight(),desired->GetWidth(),cv::COLORMAP_HOT);
+	ImagePR phase(desired->GetHeight(),desired->GetWidth(),cv::COLORMAP_BONE);
 	phase.SetGray(transfs.GetPhaseMask());
 
 	illumination.show("Illumination");

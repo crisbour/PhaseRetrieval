@@ -57,6 +57,16 @@ void addFloatArray_kernel(float *d_signal, unsigned int dim,float add_factor){
 }
 
 __global__
+void weight_kernel(float *d_w, float *d_ampOut_before, float *d_inOut,float *d_din, unsigned int *d_ROI,unsigned int n_ROI){
+    unsigned int index=threadIdx.x+blockIdx.x*blockDim.x;
+    if(index<n_ROI){
+        unsigned int index_ROI=d_ROI[index];
+        d_w[index_ROI]=sqrtf(d_din[index_ROI]/d_inOut[index_ROI])*d_ampOut_before[index_ROI];
+    }
+    __syncthreads();
+}
+
+__global__
 void max_kernel(float *d_in,float *d_max,int *mutex,unsigned int length){
     __shared__ float sdata[1024];
     unsigned int tid = threadIdx.x;
@@ -249,6 +259,112 @@ void sumROI_kernel(float *d_signal,float *d_sum,int *mutex,unsigned int *ROI, un
         while(atomicCAS(mutex,0,1));
         *d_sum += data[0];
         atomicExch(mutex,0);
+    }
+    __syncthreads();
+}
+
+__global__
+void efficiency_kernel(float *d_signal,float *d_sumSR,float *d_sum,int *mutex,unsigned int *ROI, unsigned int nROI, unsigned int length){
+    __shared__ float data[1024];
+    __shared__ float dataSR[1024];
+    unsigned int tid = threadIdx.x;
+    unsigned int index = blockIdx.x*blockDim.x + threadIdx.x;
+    unsigned int stride = blockDim.x*gridDim.x;
+    unsigned int offset=0;
+
+    float temp = 0;
+    float tempSR = 0;
+    if(index==0){              //Set d_max to infinity only once to avoid racing condition
+        *d_sum=0;
+        *d_sumSR=0;
+    }
+    while(index+offset<nROI){
+        
+        temp+=d_signal[index+offset];
+        if(index+offset<nROI)
+            tempSR+=d_signal[ROI[index+offset]];
+        offset+=stride;
+    }
+
+    data[tid] = temp;
+    dataSR[tid] = tempSR;
+    __syncthreads();
+    
+    
+    for(unsigned int s=blockDim.x/2;s>0;s>>=1){
+        if(tid<s){
+            data[tid]=data[tid]+data[tid+s];
+            dataSR[tid]=dataSR[tid]+dataSR[tid+s];   
+        }
+        __syncthreads();
+    }
+    
+    if(tid == 0){
+        while(atomicCAS(mutex,0,1));
+        *d_sum += data[0];
+        *d_sumSR+=dataSR[0];
+        atomicExch(mutex,0);
+    }
+    __syncthreads();
+    if(index==0)
+        *d_sumSR=fdividef(*d_sumSR, *d_sum);
+}
+
+__global__
+void accuracy_kernel(float *d_iOut,float *d_di,float *d_min,float *d_max,int *mutex,unsigned int *ROI, unsigned int nROI){
+    __shared__ float dataerr[1024];
+    __shared__ float data[1024];
+    unsigned int tid = threadIdx.x;
+    unsigned int index = blockIdx.x*blockDim.x + threadIdx.x;
+    unsigned int stride = blockDim.x*gridDim.x;
+    unsigned int indexROI;
+    unsigned int offset=0;
+
+    float temperr = 0;
+    float temp = 0;
+    if(index==0){            //Set d_max to infinity only once to avoid racing condition
+        *d_min=0;
+        *d_max=0;
+    }
+    
+    while(index+offset<nROI){
+        indexROI=ROI[index+offset];
+        temperr+=powf(d_iOut[indexROI]-d_di[indexROI],2);
+        temp+=powf(d_di[indexROI],2);
+        offset+=stride;
+    }
+    dataerr[tid] = temperr;
+    data[tid] = temp;
+    __syncthreads();
+    
+    
+    for(unsigned int s=blockDim.x/2;s>0;s>>=1){
+        if(tid<s){
+            dataerr[tid]+=dataerr[tid+s]; 
+            data[tid]+=data[tid+s]; 
+        }
+        __syncthreads();
+    }
+    
+    if(tid == 0){
+        while(atomicCAS(mutex,0,1));
+        *d_min += dataerr[0];
+        *d_max += data[0];
+        atomicExch(mutex,0);
+    }
+    __syncthreads();
+
+    if(index==0)
+        *d_min=sqrtf(fdividef(*d_min,*d_max));
+}
+
+__global__
+void addROI_kernel(float *d_in,float scale_in,float *d_out,float scale_out,unsigned int *ROI, unsigned int nROI){
+    unsigned int index=threadIdx.x+blockIdx.x*blockDim.x;
+
+    if(index<nROI){
+        unsigned int index_ROI=ROI[index];
+        d_out[index_ROI]=scale_in*d_in[index_ROI]+scale_out*d_out[index_ROI];
     }
     __syncthreads();
 }

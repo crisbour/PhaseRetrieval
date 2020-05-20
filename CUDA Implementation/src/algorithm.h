@@ -18,6 +18,7 @@
 #include <curand.h>
 #include "cublas_v2.h"
 #include "kernels.h"
+#include <queue>
 
 //Macros to assert if cuda functions has been processed correctly 
 //If an error occurs it halts the program and it prints
@@ -42,7 +43,7 @@
 enum PR_Type{
 	Gerchberg_Saxton,
 	MRAF,
-	Wang,
+	UCMRAF,
 	Weighted_GS
 };
 
@@ -51,16 +52,19 @@ enum PR_Type{
  * 
  */
 struct DeviceMemory{
-	float *damp,*illum,*amp,*ampOut,*phSLM,*phImg,*intensity,*dint;
+	float *damp,*illum,*amp,*ampOut,*phSLM,*phImg,*intensity,*dint,*weight,*ampOutBefore;
 	cuComplex *complex;
 	unsigned int *ROI;
+	unsigned int *SR;
 };
 struct HostMemory{
 	float *damp,*illum,*amp,*ampOut,*phSLM,*phImg,*intensity,*dint;
 	cuComplex *complex;
-	int nx,ny,n_ROI=0;
-	unsigned int *ROI=NULL;
+	int nx,ny,n_ROI=0,n_SR=0;
+	unsigned int *ROI=NULL,*SR=NULL;
 	std::vector<float> uniformity;
+	std::vector<float> efficiency;
+	std::vector<float> accuracy;
 };
 
 /**
@@ -92,7 +96,6 @@ public:
 	OpBlocks(int nx,int ny);
 	~OpBlocks();
 	cublasHandle_t& GetCUBLAS();
-	void ZeroArray(float* d_array,size_t n_bytes);
 	void SLM_To_Obj(cuComplex *d_SLM,cuComplex *d_Obj);
 	void Obj_to_SLM(cuComplex *d_Obj,cuComplex *d_SLM);
 	void Compose(cuComplex *d_signal,float *d_amp,float *d_phase);
@@ -100,10 +103,14 @@ public:
 	void Sum(float *d_adto,float *d_increment);
 	void Scale(float *d_signal,float scaling);
 	void RandomArray(float* d_array,float min, float max);
+	void ZeroArray(float* d_array,size_t n_bytes);
 	void Normalize(float *d_quantity);
 	void Intensity(float *d_amp,float *d_intensity);
 	void NormalizedIntensity(float *d_amp, float *d_int);
 	float Uniformity(float *d_signal,unsigned int *d_ROI,unsigned int n_ROI);
+	float Efficiency(float *d_signal,unsigned int *d_ROI,unsigned int n_ROI,unsigned int length);
+	float Accuracy(float *d_Out,float *d_In,unsigned int *d_ROI,unsigned int n_ROI);
+	void PerformanceMetrics(DeviceMemory &device, HostMemory &host);
 };
 
 
@@ -118,6 +125,9 @@ public:
  */
 class PhaseRetrievalAlgorithm{
 protected:
+	char name[20];
+	unsigned int index_iter=0;
+	unsigned int index_int=0;
 	DeviceMemory &device;
 	HostMemory &host;
 	OpBlocks *operation;
@@ -125,36 +135,54 @@ public:
 	PhaseRetrievalAlgorithm(OpBlocks *operation,DeviceMemory &device,HostMemory &host):device(device),host(host),operation(operation){};
 	virtual ~PhaseRetrievalAlgorithm(){};
 	virtual void OneIteration() = 0;
-	virtual void Initialize() = 0;
+	void Intialize(float param){};
+	void Initialize(){};
+	void SetIndex(unsigned int index){index_iter=index;};
+	unsigned int GetIndex()const{return index_iter;};
+	void IncrementIndex(){index_iter++;};
+	unsigned int isIntUpdated()const{return index_iter==index_int;};
+	const char* GetName(){ return name;}
+	void SetName(const char* _name){strcpy(name,_name);};
+	void updatedInt(){index_int=index_iter;};
 };
 
 class GS_ALG:public PhaseRetrievalAlgorithm{
 public:
-	GS_ALG(OpBlocks *operation,DeviceMemory &device,HostMemory &host):PhaseRetrievalAlgorithm(operation,device,host){};
+	GS_ALG(OpBlocks *operation,DeviceMemory &device,HostMemory &host):PhaseRetrievalAlgorithm(operation,device,host){SetName("GS");};
 	~GS_ALG(){};
 	void OneIteration();
-	void Initialize();
 };
 
 class MRAF_ALG:public PhaseRetrievalAlgorithm{
 public:
-	MRAF_ALG(OpBlocks *operation,DeviceMemory &device,HostMemory &host):PhaseRetrievalAlgorithm(operation,device,host){};
+	MRAF_ALG(OpBlocks *operation,DeviceMemory &device,HostMemory &host):PhaseRetrievalAlgorithm(operation,device,host){SetName("MRAF");};
 	~MRAF_ALG(){};
+	void OneIteration();
+	void Initialize(float param);
+	void Initialize();
+protected:
+	float m=0.5;
+};
+
+class UCMRAF_ALG:public PhaseRetrievalAlgorithm{
+public:
+	UCMRAF_ALG(OpBlocks *operation,DeviceMemory &device,HostMemory &host):PhaseRetrievalAlgorithm(operation,device,host){SetName("UCMRAF");};
+	~UCMRAF_ALG(){};
 	void OneIteration();
 	void Initialize();
 };
 
-class Wang_ALG:public PhaseRetrievalAlgorithm{
-public:
-	Wang_ALG(OpBlocks *operation,DeviceMemory &device,HostMemory &host):PhaseRetrievalAlgorithm(operation,device,host){};
-	~Wang_ALG(){};
-	void OneIteration(){};
-	void Initialize(){};
-};
 class WGS_ALG:public PhaseRetrievalAlgorithm{
 public:
-	WGS_ALG(OpBlocks *operation,DeviceMemory &device,HostMemory &host):PhaseRetrievalAlgorithm(operation,device,host){};
-	~WGS_ALG(){};
+	WGS_ALG(OpBlocks *operation,DeviceMemory &device,HostMemory &host):PhaseRetrievalAlgorithm(operation,device,host){
+		SetName("WGS");
+		CUDA_CALL(cudaMalloc((void**)&device.weight,host.nx*host.ny*sizeof(float)));
+		CUDA_CALL(cudaMalloc((void**)&device.ampOutBefore,host.nx*host.ny*sizeof(float)));
+	};
+	~WGS_ALG(){
+		CUDA_CALL(cudaFree(device.weight));
+		CUDA_CALL(cudaFree(device.ampOutBefore));
+	};
 	void OneIteration();
 	void Initialize();
 };
@@ -164,7 +192,8 @@ public:
 	PhaseRetrievalAlgorithm *FactoryMethod(OpBlocks *operation,DeviceMemory &device,HostMemory &host,PR_Type type){
 		if(type == Gerchberg_Saxton)	return new GS_ALG(operation,device, host);
 		if(type == MRAF)				return new MRAF_ALG(operation,device, host);
-		if(type == Wang)				return new Wang_ALG(operation,device, host);
+		if(type == UCMRAF)				return new UCMRAF_ALG(operation,device, host);
+		if(type == Weighted_GS)				return new WGS_ALG(operation,device, host);
 		printf("The algorithm specified is not a valid one! Check 'PR_Type' enumeration in algorithm.h !\n");
 		exit(-1);
 	}
@@ -184,6 +213,9 @@ public:
 
 class PhaseRetrieve{
 protected:
+	std::vector<std::vector<float>> metrics;
+	char buffer[20];
+	char type[20]; 
 	unsigned int nx,ny;
 	DeviceMemory device;
 	HostMemory host;
@@ -200,11 +232,15 @@ public:
 	void SetIllumination();
 	void SetAlgorithm(PR_Type type);
 	void FindROI(float threshold);
+	void FindSR(float threshold);
+	void SetROI(float x, float y, float r);
 	void Compute(int n_iter=0);
-	void Test();
+	void Test(int niter);
 	float* GetImage();
 	float* GetPhaseMask();
+	const char* GetName(){  if(buffer[0]=='\0'){strcat(buffer,algorithm->GetName()); strcat(buffer,type);} return buffer;}
 	std::vector<float>& GetUniformity();
+	std::vector<std::vector<float>>& GetMetrics();
 
 	unsigned int index(unsigned int i, unsigned int j);
 };
