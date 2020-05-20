@@ -18,6 +18,6 @@ Ultra fast computation of Gerchberg-Saxton algorithm and other similar phase ret
 3. Algorithm
 - Factory method to choose an algorithm to solve the problem. Implemented algorithms:
   - Gerchberg Saxton
-  - Wang's Algorithm
+  - Weighted GS
   - MRAF
-  - Fineup Hybrid Input-Output
+  - Uniformity Controlled MRAF
