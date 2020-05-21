@@ -8,6 +8,17 @@ Below the core of the algorithm is presented. The problem concerns with producin
 
 Note that by far the most computational expensive tasks are the FFT and IFFT blocks for which Numpy's library is already optimised, therefore the time taken by the Python code should be on the same order of magnitude as an equivalent C/C++ sequential implementation.
 
+| Method | Implementation | Number of iterations | Time to solve (ms) | Time per cycle (ms) |
+|:------:|:--------------:|:--------------------:|:------------------:|:-------------------:|
+|   GS   |      Numpy     |          50          |        12222       |        244.4        |
+|        |      CUDA      |          50          |        277.8       |        3.682        |
+|  MRAF  |      Numpy     |          50          |        20000       |         400         |
+|        |      CUDA      |          50          |         298        |        4.120        |
+|   WGS  |      Numpy     |          50          |        11434       |        228.7        |
+|        |      CUDA      |          50          |        345.3       |        4.998        |
+| UCMRAF |      Numpy     |          50          |        20774       |        415.5        |
+|        |      CUDA      |          50          |        302.5       |        4.338        |
+
 ### Features:
 1. Image
 - Image Creation:
