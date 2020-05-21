@@ -2,11 +2,13 @@
 ## Ultra fast computation of Gerchberg-Saxton algorithm and other similar phase retrieval algorithms, using CUDA.
 
 Note: This repository contains a Python implementation along to demonstrate speed-up of the CUDA one.
-
+### Algorithm description
 Below the core of the algorithm is presented. The problem concerns with producing a irradiance pattern (image) through phase modulation. A constant illumination profile (i.e. laser beam) is provided and we are allowed to modulate its phase by means of a phase modulating device such as a spatial light modulator (SLM).
 <img src="https://github.com/cristi-bourceanu/PhaseRetrieval/blob/master/GS_flowchart.png" width="70%">
 
+### Speed-up
 Looking at the table below, the CUDA implementation is faster by two orders of magnitude than the Numpy one. Time per cycle neglects memory transfer between the host (CPU) and the device (GPU) because data can be loaded in GPU's buffer memory. Hence the discrepancy between "Time per cycle" and "Time to solve" in CUDA case.
+
 Note that by far the most computational expensive tasks are the FFT and IFFT blocks for which Numpy's library is already optimised, therefore the time taken by the Python code should be on the same order of magnitude as an equivalent C/C++ sequential implementation.
 
 | Method | Implementation | Number of iterations | Time to solve (ms) | Time per cycle (ms) |
