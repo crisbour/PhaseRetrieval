@@ -1,3 +1,4 @@
 #Ignore compiled files
 *.o
 *.mk
+*.png
