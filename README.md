@@ -22,7 +22,7 @@ Note that by far the most computational expensive tasks are the FFT and IFFT blo
 | UCMRAF |      Numpy     |          50          |        20774       |        415.5        |
 |        |      CUDA      |          50          |        302.5       |        4.338        |
 
-### New method introduced: UCMRAF
+### New method introduced: Uniformity Controlled MRAF
  A new phase retrieval algorithm has been introduced here. This is an improvement of the MRAF by allowing optimisation of the parameter from MRAF feedback equation.
  
 
