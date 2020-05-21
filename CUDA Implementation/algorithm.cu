@@ -74,8 +74,7 @@ void OpBlocks::MapUnity(float *d_quantity){
 	minmax_kernel<<<32,1024>>>(d_quantity,d_min,d_max,d_mutex,nx*ny);
 	cudaMemcpy(&h_max,d_max,sizeof(float),cudaMemcpyDeviceToHost);
 	cudaMemcpy(&h_min,d_min,sizeof(float),cudaMemcpyDeviceToHost);
-	float scale=1/(h_max-h_min);
-	CUBLAS_CALL(cublasSscal(handle_cublas,nx*ny,&scale,d_quantity,1));
+	Scale(d_quantity,1/(h_max-h_min));
 	addFloatArray_kernel<<<(nx*ny+1023)/1024,1024>>>(d_quantity,nx*ny,-h_min/(h_max-h_min));		//Couldn't find cublas to add scalar to an array
 }
 void OpBlocks::Normalize(float *d_quantity){
@@ -198,10 +197,7 @@ void PhaseRetrieve::SetAlgorithm(PR_Type type){
 	algorithm->SetIndex(idx);
 }
 void PhaseRetrieve::SetImage(float *gray_img){
-	int indx=1080000; float h_norm; float *d_min; int *mutex;
-	cudaMalloc((void**)&d_min,sizeof(float));
-	cudaMalloc((void**)&mutex,sizeof(int));
-	cudaMemset(mutex,0,sizeof(int));
+	int indx=1080000;
 	for(int i=0;i<nx*host.ny;i++)
 		host.dint[i]=gray_img[i];
 	
@@ -292,7 +288,7 @@ void PhaseRetrieve::SetROI(float x, float y, float r){
 unsigned int PhaseRetrieve::index(unsigned int i, unsigned int j){
 	return nx*i+j;
 }
-void PhaseRetrieve::Test(int niter){
+void PhaseRetrieve::Compute(int niter){
 
 	operation->NormalizedIntensity(device.damp,device.intensity);
 	operation->MapUnity(device.intensity);
@@ -311,7 +307,6 @@ void PhaseRetrieve::Test(int niter){
 	algorithm->Initialize();
 	
 	for(int i=0;i<niter;i++){
-		if(i==1) {SetAlgorithm(UCMRAF);algorithm->Initialize();}
 		algorithm->OneIteration();
 		operation->PerformanceMetrics(device, host);
 		//if(host.n_ROI)

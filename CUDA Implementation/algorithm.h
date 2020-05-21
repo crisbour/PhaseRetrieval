@@ -237,8 +237,7 @@ public:
 	void FindROI(float threshold);
 	void FindSR(float threshold);
 	void SetROI(float x, float y, float r);
-	void Compute(int n_iter=0);
-	void Test(int niter);
+	void Compute(int n_iter=30);
 	float* GetImage();
 	float* GetPhaseMask();
 	const char* GetName(){  if(buffer[0]=='\0'){strcat(buffer,algorithm->GetName()); strcat(buffer,type);} return buffer;}

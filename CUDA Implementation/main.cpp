@@ -44,15 +44,15 @@ int main(int argc, char **argv){
 	}
 
 	ImagePR illumination(desired->GetHeight(),desired->GetWidth(),cv::COLORMAP_JET);
-	illumination.MakeGaussian((desired->GetWidth()-1)/2.0,(desired->GetHeight()-1)/2.0,1000000.,1000000.);
+	illumination.MakeGaussian((desired->GetWidth()-1)/2.0,(desired->GetHeight()-1)/2.0,10000.,10000.);
 
 	printf("(Width,Height)=(%d,%d)\n",desired->GetWidth(),desired->GetHeight());
 	PhaseRetrieve transfs(desired->GetGray(),desired->GetWidth(),desired->GetHeight(),Gerchberg_Saxton);
 	transfs.SetIllumination(illumination.GetGray());
 	
-	//transfs.SetROI(959.5,539.5,100);
+	//transfs.SetROI(959.5,539.5,100);		\\If ROI is not set specifically, SR will be used by default
 	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-	transfs.Test(50);
+	transfs.Compute(50);
 	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 	printf("Elapse time: %f milliseconds\n",std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000.0);
 
@@ -60,10 +60,11 @@ int main(int argc, char **argv){
 	printData(transfs.GetName(),transfs.GetMetrics());
 
 
-	ImagePR reconst(floor(nx_ny*spacing*1.4),floor(nx_ny*spacing*1.4));
+	//ImagePR reconst(floor(nx_ny*spacing*1.4),floor(nx_ny*spacing*1.4));
+	ImagePR reconst(desired->GetWidth(),desired->GetHeight());
 	reconst.SetGray(transfs.GetImage(),desired->GetWidth(),desired->GetHeight());
 
-	ImagePR phase(desired->GetHeight(),desired->GetWidth(),cv::COLORMAP_BONE);
+	ImagePR phase(desired->GetHeight(),desired->GetWidth(),cv::COLORMAP_TWILIGHT_SHIFTED);
 	phase.SetGray(transfs.GetPhaseMask());
 
 	illumination.show("Illumination");
