@@ -1,6 +1,8 @@
 # Phase Retrieval Algorithm
 
-Ultra fast computation of Gerchberg-Saxton algorithm and other similar phase retrieval algorithm, using CUDA.
+Ultra fast computation of Gerchberg-Saxton algorithm and other similar phase retrieval algorithms, using CUDA. This repository contains a Python implementation along to demonstrate speed-up of the CUDA one.
+
+Note that by far the most computational expensive tasks are the FFT and IFFT blocks for which Numpy's library is already optimised, therefore the time taken by the Python code should be on the same order of magnitude as an equivalent C/C++ sequential implementation.
 ### Features:
 1. Image
 - Image Creation:
