@@ -67,23 +67,31 @@ void OpBlocks::RandomArray(float* d_array,float min, float max){
 	curandGenerateNormal(curand_gen,d_array,nx*ny,min,max);
 }
 void OpBlocks::ZeroArray(float* d_array,size_t n_bytes){
-	CUDA_CALL(cudaMemset(d_array,0,n_bytes));
+	CUDA_CALL(cudaMemset(d_array,0,n_bytes*sizeof(float)));
 }
-void OpBlocks::MapUnity(float *d_quantity){
+void OpBlocks::MapUnity(float *d_quantity, char verbose){
 	float h_min,h_max;
 	minmax_kernel<<<32,1024>>>(d_quantity,d_min,d_max,d_mutex,nx*ny);
 	cudaMemcpy(&h_max,d_max,sizeof(float),cudaMemcpyDeviceToHost);
 	cudaMemcpy(&h_min,d_min,sizeof(float),cudaMemcpyDeviceToHost);
+	if(verbose) printf("(Min, Max)=(%f, %f)",h_min,h_max);
+	if(h_min!=h_max){
 	Scale(d_quantity,1/(h_max-h_min));
 	addFloatArray_kernel<<<(nx*ny+1023)/1024,1024>>>(d_quantity,nx*ny,-h_min/(h_max-h_min));		//Couldn't find cublas to add scalar to an array
+	if(verbose) printf(" - Mapped \n");
+	}
+	else if(verbose) printf(" - Null vector \n");
 }
-void OpBlocks::Normalize(float *d_quantity){
+void OpBlocks::Normalize(float *d_quantity, char verbose){
 	float h_norm;
 	 CUBLAS_CALL(cublasSnrm2(handle_cublas,nx*ny,d_quantity,1, &h_norm));
 	// norm2_kernel<<<(nx*ny+1023)/10241024>>>(d_quantity,d_min,d_mutex,nx*ny);
 	// CUDA_CALL(cudaMemcpy(&h_norm,d_min,sizeof(float),cudaMemcpyDeviceToHost));
-	h_norm=1/h_norm;
-	CUBLAS_CALL(cublasSscal(handle_cublas,nx*ny,&h_norm,d_quantity,1));
+	if(verbose) printf("Norm=%f\n",h_norm);
+	if(h_norm){
+		h_norm=1/h_norm;
+		CUBLAS_CALL(cublasSscal(handle_cublas,nx*ny,&h_norm,d_quantity,1));
+	}
 }
 void OpBlocks::Intensity(float *d_amp,float *d_intensity){
 	amplitudeToIntensity_kernel<<<(nx*ny+1023)/1024,1024>>>(d_amp,d_intensity,nx*ny);
@@ -99,12 +107,12 @@ void OpBlocks::NormalizedIntensity(float *d_amp,float *d_intensity){
  * @param d_ROI 	Array of indexes of the elements in the ROI
  * @param n_ROI 	Length of d_ROI
  */
-float OpBlocks::Uniformity(float *d_signal,unsigned int *d_ROI,unsigned int n_ROI){
+float OpBlocks::Uniformity(float *d_signal,unsigned int *d_ROI,unsigned int n_ROI, char verbose){
 	minmaxROI_kernel<<<32,1024>>>(d_signal,d_min,d_max,d_mutex,d_ROI,n_ROI);
 	float h_min,h_max;
 	CUDA_CALL(cudaMemcpy(&h_max,d_max,sizeof(float),cudaMemcpyDeviceToHost));
 	CUDA_CALL(cudaMemcpy(&h_min,d_min,sizeof(float),cudaMemcpyDeviceToHost));
-	printf("Unif=%f\n",1-(h_max-h_min)/(h_max+h_min));
+	if(verbose) printf("Unif=%f\n",1-(h_max-h_min)/(h_max+h_min));
 	return 1-(h_max-h_min)/(h_max+h_min);
 }
 float OpBlocks::Efficiency(float *d_signal,unsigned int *d_ROI,unsigned int n_ROI,unsigned int length){
@@ -117,7 +125,7 @@ float OpBlocks::Accuracy(float *d_Out,float *d_In,unsigned int *d_ROI,unsigned i
 	float h_acc;
 	accuracy_kernel<<<32,1024>>>(d_Out,d_In,d_min,d_max,d_mutex,d_ROI,n_ROI);
 	CUDA_CALL(cudaMemcpy(&h_acc,d_min,sizeof(float),cudaMemcpyDeviceToHost));
-	return 1-h_acc;
+	return (h_acc/sqrt(n_ROI));
 }
 void OpBlocks::PerformanceMetrics(DeviceMemory &device,HostMemory &host){
 	NormalizedIntensity(device.ampOut,device.intensity);
@@ -241,8 +249,9 @@ void PhaseRetrieve::FindSR(float threshold){
 void PhaseRetrieve::FindROI(float threshold){
 	if(host.n_ROI==0){
 		host.ROI=(unsigned int*)malloc(host.nx*host.ny*sizeof(unsigned int));
+		printf("FindROI: Domain length=%d\n",host.nx*host.ny);
 		for(unsigned int i=0;i<host.nx*host.ny;i++)
-			if(host.intensity[i]>threshold){
+			if(host.intensity[i]>=threshold){
 				host.ROI[host.n_ROI++]=i;
 			}
 		CUDA_CALL(cudaMalloc((void**)&device.ROI,host.n_ROI*sizeof(unsigned int)));
@@ -290,20 +299,19 @@ unsigned int PhaseRetrieve::index(unsigned int i, unsigned int j){
 }
 void PhaseRetrieve::Compute(int niter){
 
-	operation->NormalizedIntensity(device.damp,device.intensity);
+	operation->Intensity(device.damp,device.intensity);
 	operation->MapUnity(device.intensity);
 	CUDA_CALL(cudaMemcpy(host.intensity,device.intensity,nx*ny*sizeof(float),cudaMemcpyDeviceToHost));
+
 	FindSR(0.5);
 	if(!host.n_ROI){
 		FindROI(0.5);
+		printf("Number of points in ROI: %d \n",host.n_ROI);
 		strcpy(type,"_SR");
 	}
 	else
 		strcpy(type,"_ROI");
 	
-	operation->RandomArray(device.phImg,-M_PI,M_PI);
-	operation->RandomArray(device.phSLM,-M_PI,M_PI);
-
 	algorithm->Initialize();
 	
 	for(int i=0;i<niter;i++){
@@ -356,6 +364,10 @@ std::vector<std::vector<float>>& PhaseRetrieve::GetMetrics(){
 
 /********** Algorithms Implementation ***************/
 
+void GS_ALG::Initialize(){
+	if(index_iter==0)
+		operation->RandomArray(device.phImg,-M_PI,M_PI);
+}
 void GS_ALG::OneIteration(){
 	IncrementIndex();
 	operation->Compose(device.complex,device.damp,device.phImg);
@@ -367,20 +379,28 @@ void GS_ALG::OneIteration(){
 }
 
 void MRAF_ALG::Initialize(){
-	if(index_iter==0)
+	if(index_iter==0){
 		operation->ZeroArray(device.ampOut,host.nx * host.ny);
+		operation->MapUnity(device.damp);
+		operation->RandomArray(device.phImg,-M_PI,M_PI);
+		operation->RandomArray(device.phSLM,-M_PI,M_PI);
+	}
 }
 void MRAF_ALG::Initialize(float param){
 	m=param;
-	if(index_iter==0)
+	if(index_iter==0){
 		operation->ZeroArray(device.ampOut,host.nx * host.ny);
+		operation->MapUnity(device.damp);
+		operation->RandomArray(device.phImg,-M_PI,M_PI);
+		operation->RandomArray(device.phSLM,-M_PI,M_PI);
+	}
 }
 void MRAF_ALG::OneIteration(){
 	//MRAF Scaling the desired amplitude for correction
 	IncrementIndex();
-	operation->Normalize(device.ampOut);
-	addROI_kernel<<<(host.n_SR+1024)/1024,1024>>>(device.damp,1,device.ampOut,(m-1),device.SR,host.n_SR);
-	//addROI_kernel<<<(host.n_ROI+1024)/1024,1024>>>(device.damp,1,device.ampOut,(m-1),device.ROI,host.n_ROI);
+	operation->MapUnity(device.ampOut);
+	//addROI_kernel<<<(host.n_SR+1024)/1024,1024>>>(device.damp,1,device.ampOut,(m-1),device.SR,host.n_SR);
+	addROI_kernel<<<(host.n_ROI+1024)/1024,1024>>>(device.damp,1,device.ampOut,(m-1),device.ROI,host.n_ROI);
 
 	operation->Compose(device.complex,device.ampOut,device.phImg);
 	operation->Obj_to_SLM(device.complex,device.complex);
@@ -393,8 +413,12 @@ void MRAF_ALG::OneIteration(){
 }
 
 void UCMRAF_ALG::Initialize(){
-	if(index_iter==0)
+	if(index_iter==0){
 		operation->ZeroArray(device.ampOut,host.nx * host.ny);
+		operation->MapUnity(device.damp);
+		operation->RandomArray(device.phImg,-M_PI,M_PI);
+		operation->RandomArray(device.phSLM,-M_PI,M_PI);
+	}
 }
 void UCMRAF_ALG::OneIteration(){
 	//UCMRAF Scaling the desired amplitude for correction
@@ -403,6 +427,7 @@ void UCMRAF_ALG::OneIteration(){
 	if(host.uniformity.size())
 		u=host.uniformity.back();
 	operation->Normalize(device.ampOut);
+	
 	addROI_kernel<<<(host.n_SR+1024)/1024,1024>>>(device.damp,1,device.ampOut,(u-1),device.SR,host.n_SR);
 	//addROI_kernel<<<(host.n_ROI+1024)/1024,1024>>>(device.damp,1,device.ampOut,(u-1),device.ROI,host.n_ROI);
 	

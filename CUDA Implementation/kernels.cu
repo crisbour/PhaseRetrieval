@@ -361,7 +361,6 @@ void accuracy_kernel(float *d_iOut,float *d_di,float *d_min,float *d_max,int *mu
 __global__
 void addROI_kernel(float *d_in,float scale_in,float *d_out,float scale_out,unsigned int *ROI, unsigned int nROI){
     unsigned int index=threadIdx.x+blockIdx.x*blockDim.x;
-
     if(index<nROI){
         unsigned int index_ROI=ROI[index];
         d_out[index_ROI]=scale_in*d_in[index_ROI]+scale_out*d_out[index_ROI];

@@ -106,11 +106,11 @@ public:
 	void Scale(float *d_signal,float scaling);
 	void RandomArray(float* d_array,float min, float max);
 	void ZeroArray(float* d_array,size_t n_bytes);
-	void MapUnity(float *d_quantity);
-	void Normalize(float *d_quantity);
+	void MapUnity(float *d_quantity, char verbose=0);
+	void Normalize(float *d_quantity, char verbose=0);
 	void Intensity(float *d_amp,float *d_intensity);
 	void NormalizedIntensity(float *d_amp, float *d_int);
-	float Uniformity(float *d_signal,unsigned int *d_ROI,unsigned int n_ROI);
+	float Uniformity(float *d_signal,unsigned int *d_ROI,unsigned int n_ROI, char verbose=0);
 	float Efficiency(float *d_signal,unsigned int *d_ROI,unsigned int n_ROI,unsigned int length);
 	float Accuracy(float *d_Out,float *d_In,unsigned int *d_ROI,unsigned int n_ROI);
 	void PerformanceMetrics(DeviceMemory &device, HostMemory &host);
@@ -138,8 +138,8 @@ public:
 	PhaseRetrievalAlgorithm(OpBlocks *operation,DeviceMemory &device,HostMemory &host):device(device),host(host),operation(operation){};
 	virtual ~PhaseRetrievalAlgorithm(){};
 	virtual void OneIteration() = 0;
-	void Intialize(float param){};
-	void Initialize(){};
+	virtual void Intialize(float param){};
+	virtual void Initialize(){};
 	void SetIndex(unsigned int index){index_iter=index;};
 	unsigned int GetIndex()const{return index_iter;};
 	void IncrementIndex(){index_iter++;};
@@ -154,6 +154,7 @@ public:
 	GS_ALG(OpBlocks *operation,DeviceMemory &device,HostMemory &host):PhaseRetrievalAlgorithm(operation,device,host){SetName("GS");};
 	~GS_ALG(){};
 	void OneIteration();
+	void Initialize();
 };
 
 class MRAF_ALG:public PhaseRetrievalAlgorithm{

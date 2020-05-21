@@ -18,6 +18,7 @@ void printData(const char* data_name,std::vector<std::vector<float>>data){
 	FILE *File;
 	char filePath[100]="../Data/";
 	strcat(filePath,data_name); strcat(filePath,".txt");
+	printf("Print data to %s\n",filePath);
 	File=fopen(filePath,"w+");
 	fprintf(File,"%u\n",data[0].size());
 	fprintf(File,"Uniformity Accuracy Efficiency\n");
@@ -31,14 +32,14 @@ int main(int argc, char **argv){
 	// Pattern pattern1(desired,3,3,30,30);
 	// pattern1.setElement(square1);
 	// pattern1.Draw(115,115);
-	int spacing=12;
-	int nx_ny=5;
+	int spacing=49;
+	int nx_ny=10;
 	ImagePR_Interface *desired;
 	if(argc==2)
 		desired= new ImagePR(argv[1]);
 	else{
-		desired= new ImagePR(200,200); 
-		Square spot(*desired,5,5);
+		desired= new ImagePR(500,500); 
+		Square spot(*desired,30,30);
 		MeshPattern pattern(*desired,nx_ny,spacing,spot);
 		pattern.Draw(0,0);
 	}
@@ -47,7 +48,7 @@ int main(int argc, char **argv){
 	illumination.MakeGaussian((desired->GetWidth()-1)/2.0,(desired->GetHeight()-1)/2.0,10000.,10000.);
 
 	printf("(Width,Height)=(%d,%d)\n",desired->GetWidth(),desired->GetHeight());
-	PhaseRetrieve transfs(desired->GetGray(),desired->GetWidth(),desired->GetHeight(),Gerchberg_Saxton);
+	PhaseRetrieve transfs(desired->GetGray(),desired->GetWidth(),desired->GetHeight(),MRAF);
 	transfs.SetIllumination(illumination.GetGray());
 	
 	//transfs.SetROI(959.5,539.5,100);		\\If ROI is not set specifically, SR will be used by default
