@@ -3,10 +3,11 @@
 
 Note: This repository contains a Python implementation along to demonstrate speed-up of the CUDA one.
 
-Below the core of the algorithm is presented. A constant illumination profile (i.e. laser beam) is provided and we are allowed to modulate its phase by means of a phase modulating device such as a spatial light modulator (SLM). The problem concerns with producing a irradiance pattern (image) through phase modulation.
+Below the core of the algorithm is presented. The problem concerns with producing a irradiance pattern (image) through phase modulation. A constant illumination profile (i.e. laser beam) is provided and we are allowed to modulate its phase by means of a phase modulating device such as a spatial light modulator (SLM).
 <img src="https://github.com/cristi-bourceanu/PhaseRetrieval/blob/master/GS_flowchart.png" width="70%">
 
 Note that by far the most computational expensive tasks are the FFT and IFFT blocks for which Numpy's library is already optimised, therefore the time taken by the Python code should be on the same order of magnitude as an equivalent C/C++ sequential implementation.
+
 ### Features:
 1. Image
 - Image Creation:
