@@ -65,7 +65,7 @@ void scaleFourier_kernel(cufftComplex *d_signal, unsigned int dim);
  * @return __global__ scaleAmp_kernel 
  */
 __global__
-void scaleAmp_kernel(float *d_signal, unsigned int dim,float scale_factor);
+void scaleVect_kernel(float *d_signal, unsigned int dim,float scale_factor);
 
 __global__
 void weight_kernel(float *d_w, float *d_ampOut_before, float *d_inOut,float *d_din, unsigned int *d_ROI,unsigned int n_ROI);
@@ -81,28 +81,6 @@ void weight_kernel(float *d_w, float *d_ampOut_before, float *d_inOut,float *d_d
 __global__
 void addFloatArray_kernel(float *d_signal, unsigned int dim,float add_factor);
 
-/** @brief Find the maximum in an array
- * 
- * @param d_in      - input:    Input array
- * @param d_max     - output:   Maximum value 
- * @param mutex     - global:   Mutual exclusion variable
- * @param length    - input:    Dimension of the array
- * @return __global__ max_kernel 
- */
-__global__
-void max_kernel(float *d_in,float *d_max,int *mutex,unsigned int length);
-
-/** @brief Find the minimum in an array
- * 
- * @param d_in      - input:    Input array
- * @param d_max     - output:   Minimum value 
- * @param mutex     - global:   Mutual exclusion variable
- * @param length    - input:    Dimension of the array
- * @return __global__ max_kernel 
- */
-__global__
-void min_kernel(float *d_in,float *d_max,int *mutex,unsigned int length);
-
 __global__
 void minmax_kernel(float *d_signal,float *d_min, float *d_max,int *mutex, unsigned int length);
 
@@ -116,13 +94,10 @@ __global__
 void addROI_kernel(float *d_in,float scale_in,float *d_out,float scale_out,unsigned int *ROI, unsigned int nROI);
 
 __global__
-void accuracy_kernel(float *d_iOut,float *d_di,float *d_min,float *d_max,int *mutex,unsigned int *ROI, unsigned int nROI);
+void accuracy_kernel(float *d_iOut,float *d_di, float *d_sumerr2,int *mutex,unsigned int *ROI, unsigned int nROI);
 
 __global__
 void efficiency_kernel(float *d_signal,float *d_sumSR,float *d_sum,int *mutex,unsigned int *ROI, unsigned int nROI, unsigned int length);
-
-__global__
-void norm2_kernel(float *d_signal, float *d_sum, int *mutex, unsigned int length);
 
 __global__
 void sqrt_kernel(float *d_signal_in,float *d_signal_out,unsigned int length);

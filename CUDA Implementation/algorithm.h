@@ -38,6 +38,12 @@
     printf("Error at %s:%d\n",__FILE__,__LINE__);\
     exit(EXIT_FAILURE);}} while(0)
 
+// Execute instruction passed if verbosity is set
+// E.g. printf some information: VERB_EXEC(printf("a=%d",1),1); will print "a=1"
+// Whereas VERB_EXEC(printf("a=%d",1),0); will not do anything
+#define VERB_EXEC(instruction,verbosity)do{ if(verbosity) { \
+	(instruction); }}while(0)
+
 
 //List of Phase Retrieval Algorithms available
 //Choose one of those when you are setting up the solver
@@ -91,7 +97,7 @@ protected:
 	curandStatus_t stat_curand;
 	int nx,ny;
 	float *d_min,*d_max;
-	double *d_sum;
+	float *d_sum, *d_sumROI;
 	int *d_mutex;
 
 public:
@@ -226,6 +232,7 @@ protected:
 	OpBlocks *operation = NULL;
 	PhaseRetrievalAlgorithm *algorithm = NULL;
 	float *h_out_img,*h_out_phase;
+	float* ROI_Mask=NULL;
 
 public:
 	PhaseRetrieve(float *gray_img,unsigned int nx,unsigned int ny, PR_Type type=Gerchberg_Saxton);
@@ -241,6 +248,7 @@ public:
 	void Compute(int n_iter=30);
 	float* GetImage();
 	float* GetPhaseMask();
+	float* GetROIMask();
 	const char* GetName(){  if(buffer[0]=='\0'){strcat(buffer,algorithm->GetName()); strcat(buffer,type);} return buffer;}
 	std::vector<float>& GetUniformity();
 	std::vector<std::vector<float>>& GetMetrics();

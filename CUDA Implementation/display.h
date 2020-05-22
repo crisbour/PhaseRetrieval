@@ -48,19 +48,19 @@ public:
 class Drawing{
 public:
     ~Drawing(){};
-    int Width(){return 0;}
-    int Height(){return 0;}
+    virtual int Width()=0;
+    virtual int Height()=0;
     virtual void Draw(int x, int y)=0;
 };
 
 class Square:public Drawing{
-private:
+protected:
     ImagePR_Interface &image;
     int dx,dy;
 public:
     Square(ImagePR_Interface &image,int dx, int dy):image(image),dx(dx),dy(dy){};
-    int Width()const{return dx;};
-    int Height()const{return dx;};
+    int Width(){return dx;};
+    int Height(){return dy;};
     ~Square(){};
     void Draw(int x, int y){
         for(int i=0;i<dx;i++)
@@ -76,13 +76,15 @@ private:
 public:
     Pattern(ImagePR_Interface &_image,int _nx,int _ny, int _dx, int _dy,Drawing &elem):image(image),nx(_nx),ny(_ny),dx(_dx),dy(_dy),elem(elem){};
     virtual ~Pattern(){};
-    int Width()const{return dx*(nx-1)+elem.Width();};
-    int Height()const{return dx*(nx-1)+elem.Height();};
+    int Width(){return dx*(nx-1)+nx*elem.Width();};
+    int Height(){return dx*(ny-1)+ny*elem.Height();};
     //void setElement(Drawing &_elem){&elem=_elem;};
     void Draw(int x, int y){
+        int Tx=dx+elem.Width();
+        int Ty=dy+elem.Height();
         for(int i=0;i<nx;i++)
             for(int j=0;j<ny;j++)
-                elem.Draw(x+i*dx,y+j*dy);
+                elem.Draw(x+i*Tx,y+j*Ty);
     };
 };
 class MeshPattern:public Drawing{
@@ -93,6 +95,8 @@ private:
 public:
     MeshPattern(ImagePR_Interface &image,int n, int step, Drawing &_elem):image(image),elem(_elem),n(n),step(step){};
     ~MeshPattern(){};
+    int Width(){return step*(n-1)+n*elem.Width();};
+    int Height(){return step*(n-1)+n*elem.Height();};
     void Draw(int x, int y){
         Pattern* pattern=new Pattern(image,n,n,step,step,elem);
         int wi=image.GetWidth(); int hi=image.GetHeight();

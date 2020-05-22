@@ -21,9 +21,9 @@ void printData(const char* data_name,std::vector<std::vector<float>>data){
 	printf("Print data to %s\n",filePath);
 	File=fopen(filePath,"w+");
 	fprintf(File,"%u\n",data[0].size());
-	fprintf(File,"Uniformity Accuracy Efficiency\n");
+	fprintf(File,"Uniformity,Accuracy,Efficiency\n");
 	for(unsigned int i=0;i<data[0].size();i++){
-		fprintf(File,"%f %f %f\n",data[0][i],data[1][i],data[2][i]);
+		fprintf(File,"%f,%f,%f\n",data[0][i],data[1][i],data[2][i]);
 	}
 
 }
@@ -32,14 +32,14 @@ int main(int argc, char **argv){
 	// Pattern pattern1(desired,3,3,30,30);
 	// pattern1.setElement(square1);
 	// pattern1.Draw(115,115);
-	int spacing=49;
+	int spacing=10;
 	int nx_ny=10;
 	ImagePR_Interface *desired;
 	if(argc==2)
 		desired= new ImagePR(argv[1]);
 	else{
 		desired= new ImagePR(500,500); 
-		Square spot(*desired,30,30);
+		Square spot(*desired,10,10);
 		MeshPattern pattern(*desired,nx_ny,spacing,spot);
 		pattern.Draw(0,0);
 	}
@@ -48,10 +48,11 @@ int main(int argc, char **argv){
 	illumination.MakeGaussian((desired->GetWidth()-1)/2.0,(desired->GetHeight()-1)/2.0,10000.,10000.);
 
 	printf("(Width,Height)=(%d,%d)\n",desired->GetWidth(),desired->GetHeight());
-	PhaseRetrieve transfs(desired->GetGray(),desired->GetWidth(),desired->GetHeight(),MRAF);
+	PhaseRetrieve transfs(desired->GetGray(),desired->GetWidth(),desired->GetHeight(),UCMRAF);
 	transfs.SetIllumination(illumination.GetGray());
 	
-	//transfs.SetROI(959.5,539.5,100);		\\If ROI is not set specifically, SR will be used by default
+	transfs.SetROI(249.5,249.5,150);		//If ROI is not set specifically, SR will be used by default
+	
 	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 	transfs.Compute(50);
 	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
@@ -60,6 +61,8 @@ int main(int argc, char **argv){
 	printf("%s\n",transfs.GetName());
 	printData(transfs.GetName(),transfs.GetMetrics());
 
+	ImagePR ROI_mask(desired->GetWidth(),desired->GetHeight());
+	ROI_mask.SetGray(transfs.GetROIMask());
 
 	//ImagePR reconst(floor(nx_ny*spacing*1.4),floor(nx_ny*spacing*1.4));
 	ImagePR reconst(desired->GetWidth(),desired->GetHeight());
@@ -70,6 +73,7 @@ int main(int argc, char **argv){
 
 	illumination.show("Illumination");
 	desired->show("Desired Image");
+	ROI_mask.show("ROI Mask");
 	phase.show("Phase Mask");
 	reconst.show("Reconstructed Image");
 	// cv::Mat image(desired.GetHeight(),desired.GetWidth(),CV_8U);

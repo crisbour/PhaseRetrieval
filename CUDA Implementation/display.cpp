@@ -17,7 +17,7 @@ ImagePR::ImagePR(int width, int height,int coloring):color_display(coloring)
     SetDimensions(width,height);
     image=cv::Mat(height,width,CV_8UC3);
     gray_image=cv::Mat(height,width,cv::IMREAD_GRAYSCALE);
-    printf("Dim=%d:",height*width);
+    printf("Dim=%d:\n",height*width);
     gray_array=(float*)malloc(height*width*sizeof(float));
     printf("Memory allocated for blank image\n");
 }
