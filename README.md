@@ -17,7 +17,7 @@ Note that by far the most computational expensive tasks are the FFT and IFFT blo
 |        |      CUDA      |          50          |        277.8 ms       |        3.682        |
 |  MRAF  |      Numpy     |          50          |        20 s       |         400         |
 |        |      CUDA      |          50          |         298 ms        |        4.120        |
-|   WGS  |      Numpy     |          50          |        11.4 s       |        228.7        |
+|   WGS  |      Numpy     |          50          |        21.4 s       |        228.7        |
 |        |      CUDA      |          50          |        345.3 ms      |        4.998        |
 | UCMRAF |      Numpy     |          50          |        20.8 s       |        415.5        |
 |        |      CUDA      |          50          |        302.5 ms      |        4.338        |
