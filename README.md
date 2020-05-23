@@ -11,16 +11,16 @@ Looking at the table below, the CUDA implementation is faster by two orders of m
 
 Note that by far the most computational expensive tasks are the FFT and IFFT blocks for which Numpy's library is already optimised, therefore the time taken by the Python code should be on the same order of magnitude as an equivalent C/C++ sequential implementation.
 
-| Method | Implementation | Number of iterations | Time to solve (ms) | Time per cycle (ms) |
+| Method | Implementation | Number of iterations |   Time to solve    | Time per cycle (ms) |
 |:------:|:--------------:|:--------------------:|:------------------:|:-------------------:|
-|   GS   |      Numpy     |          50          |        12222       |        244.4        |
-|        |      CUDA      |          50          |        277.8       |        3.682        |
-|  MRAF  |      Numpy     |          50          |        20000       |         400         |
-|        |      CUDA      |          50          |         298        |        4.120        |
-|   WGS  |      Numpy     |          50          |        11434       |        228.7        |
-|        |      CUDA      |          50          |        345.3       |        4.998        |
-| UCMRAF |      Numpy     |          50          |        20774       |        415.5        |
-|        |      CUDA      |          50          |        302.5       |        4.338        |
+|   GS   |      Numpy     |          50          |        12.2 s       |        244.4        |
+|        |      CUDA      |          50          |        277.8 ms       |        3.682        |
+|  MRAF  |      Numpy     |          50          |        20 s       |         400         |
+|        |      CUDA      |          50          |         298 ms        |        4.120        |
+|   WGS  |      Numpy     |          50          |        11.4 s       |        228.7        |
+|        |      CUDA      |          50          |        345.3 ms      |        4.998        |
+| UCMRAF |      Numpy     |          50          |        20.8 s       |        415.5        |
+|        |      CUDA      |          50          |        302.5 ms      |        4.338        |
 
 ### New method introduced: Uniformity Controlled MRAF
  A new phase retrieval algorithm has been introduced here. This is an improvement of the MRAF by allowing optimisation of the parameter from MRAF feedback equation.
