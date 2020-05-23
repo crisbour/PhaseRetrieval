@@ -28,6 +28,12 @@ Note that by far the most computational expensive tasks are the FFT and IFFT blo
 ### Methods compared
 
 <img src="https://github.com/cristi-bourceanu/PhaseRetrieval/blob/master/CUDA%20Implementation/Data/Figures/Uniformity.png" width="50%">
+
+<img src="https://github.com/cristi-bourceanu/PhaseRetrieval/blob/master/CUDA%20Implementation/Data/Figures/Accuracy.png" width="50%">
+
+<img src="https://github.com/cristi-bourceanu/PhaseRetrieval/blob/master/CUDA%20Implementation/Data/Figures/Efficiency.png" width="50%">
+
+
 ### Features:
 1. Image
 - Image Creation:
