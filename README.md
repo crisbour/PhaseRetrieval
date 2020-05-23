@@ -25,7 +25,9 @@ Note that by far the most computational expensive tasks are the FFT and IFFT blo
 ### New method introduced: Uniformity Controlled MRAF
  A new phase retrieval algorithm has been introduced here. This is an improvement of the MRAF by allowing optimisation of the parameter from MRAF feedback equation.
  
+### Methods compared
 
+<img src="https://github.com/cristi-bourceanu/PhaseRetrieval/blob/master/CUDA%20Implementation/Data/Figures/Uniformity.png" width="50%">
 ### Features:
 1. Image
 - Image Creation:
