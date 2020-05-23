@@ -467,13 +467,22 @@ void UCMRAF_ALG::OneIteration(){
 	
 }
 void WGS_ALG::Initialize(){
-	operation->ZeroArray(device.weight,host.nx*host.ny);
-	CUDA_CALL(cudaMemcpy(device.ampOutBefore,device.damp,host.nx*host.ny*sizeof(float),cudaMemcpyDeviceToDevice));
+	// operation->ZeroArray(device.weight,host.nx*host.ny);
+	
+	operation->RandomArray(device.phImg,-M_PI,M_PI);
+	operation->RandomArray(device.phSLM,-M_PI,M_PI);
+	
+	CUDA_CALL(cudaMemcpy(device.weight,device.damp,host.nx*host.ny*sizeof(float),cudaMemcpyDeviceToDevice));
+	// CUDA_CALL(cudaMemcpy(device.ampOutBefore,device.damp,host.nx*host.ny*sizeof(float),cudaMemcpyDeviceToDevice));
 }
 void WGS_ALG::OneIteration(){
-	//operation->Compose(device.complex,wamp,device.phImg);
-	//cudaMemcpy(ampOut_before,device.ampOut,host.nx*host.ny*sizeof(float),cudaMemcpyDeviceToDevice);
+
+	CUDA_CALL(cudaMemcpy(device.ampOutBefore,device.weight,host.nx*host.ny*sizeof(float),cudaMemcpyDeviceToDevice));
+
 	IncrementIndex();
+	operation->Compose(device.complex,device.weight,device.phImg);
+	operation->Obj_to_SLM(device.complex,device.complex);
+	operation->Decompose(device.complex,device.amp,device.phSLM);
 	operation->Compose(device.complex,device.illum,device.phSLM);
 	operation->SLM_To_Obj(device.complex,device.complex);
 	operation->Decompose(device.complex,device.ampOut,device.phImg);
@@ -481,11 +490,23 @@ void WGS_ALG::OneIteration(){
 	operation->Intensity(device.ampOut,device.intensity);
 	updatedInt();
 	operation->MapUnity(device.intensity);
-
 	weight_kernel<<<(host.nx*host.ny+1023)/1024,1024>>>(device.weight,device.ampOutBefore,device.intensity,device.dint,device.SR,host.n_SR);
+	operation->MapUnity(device.weight);
 
-	operation->Compose(device.complex,device.weight,device.phImg);
-	operation->Obj_to_SLM(device.complex,device.complex);
-	operation->Decompose(device.complex,device.amp,device.phSLM);
-	CUDA_CALL(cudaMemcpy(device.ampOutBefore,device.weight,host.nx*host.ny*sizeof(float),cudaMemcpyDeviceToDevice));
+
+	// IncrementIndex();
+	// operation->Compose(device.complex,device.illum,device.phSLM);
+	// operation->SLM_To_Obj(device.complex,device.complex);
+	// operation->Decompose(device.complex,device.ampOut,device.phImg);
+
+	// operation->Intensity(device.ampOut,device.intensity);
+	// updatedInt();
+	// operation->MapUnity(device.intensity);
+
+	// weight_kernel<<<(host.nx*host.ny+1023)/1024,1024>>>(device.weight,device.ampOutBefore,device.intensity,device.dint,device.SR,host.n_SR);
+
+	// operation->Compose(device.complex,device.weight,device.phImg);
+	// operation->Obj_to_SLM(device.complex,device.complex);
+	// operation->Decompose(device.complex,device.amp,device.phSLM);
+	// CUDA_CALL(cudaMemcpy(device.ampOutBefore,device.weight,host.nx*host.ny*sizeof(float),cudaMemcpyDeviceToDevice));
 }

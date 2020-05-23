@@ -48,10 +48,10 @@ int main(int argc, char **argv){
 	illumination.MakeGaussian((desired->GetWidth()-1)/2.0,(desired->GetHeight()-1)/2.0,10000.,10000.);
 
 	printf("(Width,Height)=(%d,%d)\n",desired->GetWidth(),desired->GetHeight());
-	PhaseRetrieve transfs(desired->GetGray(),desired->GetWidth(),desired->GetHeight(),UCMRAF);
+	PhaseRetrieve transfs(desired->GetGray(),desired->GetWidth(),desired->GetHeight(),Weighted_GS);
 	transfs.SetIllumination(illumination.GetGray());
 	
-	transfs.SetROI(249.5,249.5,150);		//If ROI is not set specifically, SR will be used by default
+	//transfs.SetROI(249.5,249.5,150);		//If ROI is not set specifically, SR will be used by default
 	
 	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 	transfs.Compute(50);
