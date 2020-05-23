@@ -22,10 +22,10 @@ Note that by far the most computational expensive tasks are the FFT and IFFT blo
 | UCMRAF |      Numpy     |          50          |        20.8 s       |        415.5        |
 |        |      CUDA      |          50          |        302.5 ms      |        4.338        |
   
-  GS    : Gerchberg-Saxton
-  WGS   : Weighted Gerchberg-Saxton
-  MRAF  : Mixed Region Amplitude Freedom
-  UCMRAF: Uniformity Controlled MRAF
+ - GS    : Gerchberg-Saxton
+ - WGS   : Weighted Gerchberg-Saxton
+ - MRAF  : Mixed Region Amplitude Freedom
+ - UCMRAF: Uniformity Controlled MRAF.
 
 ### New method introduced: Uniformity Controlled MRAF
  A new phase retrieval algorithm has been introduced here. This is an improvement of the MRAF by allowing optimisation of the parameter from MRAF feedback equation.
