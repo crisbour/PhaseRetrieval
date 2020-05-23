@@ -66,7 +66,11 @@ def main():
             figU.plot(data[i].getData(0),label=data[i].Name())
             figA.plot(data[i].getData(1),label=data[i].Name())
             figE.plot(data[i].getData(2),label=data[i].Name())
-            
+        
+    figU.set_xscale("log")
+    figA.set_xscale("log")
+    figE.set_xscale("log")
+    
     figU.legend()
     figA.legend()
     figE.legend()
