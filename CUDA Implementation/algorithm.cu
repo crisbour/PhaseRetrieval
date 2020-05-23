@@ -322,11 +322,11 @@ void PhaseRetrieve::SetROI(float x, float y, float r){
 unsigned int PhaseRetrieve::index(unsigned int i, unsigned int j){
 	return nx*i+j;
 }
-void PhaseRetrieve::Compute(int niter){
-	cudaError_t e;
 
+void PhaseRetrieve::InitCompute(){
+	operation->MapUnity(device.damp);
 	operation->Intensity(device.damp,device.intensity);
-	operation->MapUnity(device.intensity);
+	
 	CUDA_CALL(cudaMemcpy(host.intensity,device.intensity,nx*ny*sizeof(float),cudaMemcpyDeviceToHost));
 
 	FindSR(0.5);
@@ -336,18 +336,19 @@ void PhaseRetrieve::Compute(int niter){
 	}
 	else
 		strcpy(type,"_ROI");
+	stage=1;
+}
+void PhaseRetrieve::Compute(int niter){
+	if(stage<1)	InitCompute();
 	
 	algorithm->Initialize();
 	
 	for(int i=0;i<niter;i++){
 		algorithm->OneIteration();
 		operation->PerformanceMetrics(device, host);
-		e=cudaGetLastError();
-		if(e)	printf("%s\n",cudaGetErrorString(e));
-		//if(host.n_ROI)
-			//host.uniformity.push_back(operation->Uniformity(device.intensity,device.ROI,host.n_ROI));
 	}
-
+}
+void PhaseRetrieve::PrepareResults(){
 	operation->Intensity(device.ampOut,device.intensity);
 	operation->MapUnity(device.intensity);
 
@@ -371,13 +372,16 @@ void PhaseRetrieve::Compute(int niter){
 		}
 
 	printf("Error squared: %f\n",err);
+	stage=2;
 }
 
 float* PhaseRetrieve::GetImage(){
+	if(stage<2)	PrepareResults();
 	return h_out_img;
 }
 
 float* PhaseRetrieve::GetPhaseMask(){
+	if(stage<2)	PrepareResults();
 	return h_out_phase;
 }
 
@@ -468,16 +472,19 @@ void UCMRAF_ALG::OneIteration(){
 }
 void WGS_ALG::Initialize(){
 	// operation->ZeroArray(device.weight,host.nx*host.ny);
+	// CUDA_CALL(cudaMemcpy(device.ampOutBefore,device.damp,host.nx*host.ny*sizeof(float),cudaMemcpyDeviceToDevice));
 	
+	if(index_iter==0){
 	operation->RandomArray(device.phImg,-M_PI,M_PI);
 	operation->RandomArray(device.phSLM,-M_PI,M_PI);
-	
+	}
+
 	CUDA_CALL(cudaMemcpy(device.weight,device.damp,host.nx*host.ny*sizeof(float),cudaMemcpyDeviceToDevice));
-	// CUDA_CALL(cudaMemcpy(device.ampOutBefore,device.damp,host.nx*host.ny*sizeof(float),cudaMemcpyDeviceToDevice));
 }
 void WGS_ALG::OneIteration(){
 
-	CUDA_CALL(cudaMemcpy(device.ampOutBefore,device.weight,host.nx*host.ny*sizeof(float),cudaMemcpyDeviceToDevice));
+	if(index_iter<2)
+	CUDA_CALL(cudaMemcpy(device.weight,device.damp,host.nx*host.ny*sizeof(float),cudaMemcpyDeviceToDevice));
 
 	IncrementIndex();
 	operation->Compose(device.complex,device.weight,device.phImg);
@@ -490,7 +497,7 @@ void WGS_ALG::OneIteration(){
 	operation->Intensity(device.ampOut,device.intensity);
 	updatedInt();
 	operation->MapUnity(device.intensity);
-	weight_kernel<<<(host.nx*host.ny+1023)/1024,1024>>>(device.weight,device.ampOutBefore,device.intensity,device.dint,device.SR,host.n_SR);
+	weight_kernel<<<(host.nx*host.ny+1023)/1024,1024>>>(device.weight,device.weight,device.intensity,device.dint,device.SR,host.n_SR);
 	operation->MapUnity(device.weight);
 
 

@@ -54,6 +54,8 @@ int main(int argc, char **argv){
 	//transfs.SetROI(249.5,249.5,150);		//If ROI is not set specifically, SR will be used by default
 	
 	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+	// transfs.Compute(1);
+	// transfs.SetAlgorithm(Weighted_GS);
 	transfs.Compute(50);
 	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 	printf("Elapse time: %f milliseconds\n",std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000.0);
@@ -76,9 +78,7 @@ int main(int argc, char **argv){
 	ROI_mask.show("ROI Mask");
 	phase.show("Phase Mask");
 	reconst.show("Reconstructed Image");
-	// cv::Mat image(desired.GetHeight(),desired.GetWidth(),CV_8U);
-    // cv::putText(image, "Hello World!", cv::Point( 100, 200 ), cv::FONT_HERSHEY_SIMPLEX | cv::FONT_ITALIC, 1.0, cv::Scalar( 0, 0, 0 ));
-    // cv::imshow("My Window", image);
+
 	cv::waitKey(0);
 	delete desired;
 	return 0;

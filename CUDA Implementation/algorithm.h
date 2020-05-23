@@ -59,10 +59,9 @@ enum PR_Type{
  * 
  */
 struct DeviceMemory{
-	float *damp,*illum,*amp,*ampOut,*phSLM,*phImg,*intensity,*dint,*weight,*ampOutBefore;
+	float *damp,*illum,*amp,*ampOut,*phSLM,*phImg,*intensity,*dint,*weight;
 	cuComplex *complex;
-	unsigned int *ROI;
-	unsigned int *SR;
+	unsigned int *ROI, *SR;
 };
 struct HostMemory{
 	float *damp,*illum,*amp,*ampOut,*phSLM,*phImg,*intensity,*dint;
@@ -187,11 +186,9 @@ public:
 	WGS_ALG(OpBlocks *operation,DeviceMemory &device,HostMemory &host):PhaseRetrievalAlgorithm(operation,device,host){
 		SetName("WGS");
 		CUDA_CALL(cudaMalloc((void**)&device.weight,host.nx*host.ny*sizeof(float)));
-		CUDA_CALL(cudaMalloc((void**)&device.ampOutBefore,host.nx*host.ny*sizeof(float)));
 	};
 	~WGS_ALG(){
 		CUDA_CALL(cudaFree(device.weight));
-		CUDA_CALL(cudaFree(device.ampOutBefore));
 	};
 	void OneIteration();
 	void Initialize();
@@ -242,8 +239,6 @@ public:
 	void SetIllumination(float *illum_img);		//To do
 	void SetIllumination();
 	void SetAlgorithm(PR_Type type);
-	void FindROI(float threshold);
-	void FindSR(float threshold);
 	void SetROI(float x, float y, float r);
 	void Compute(int n_iter=30);
 	float* GetImage();
@@ -253,7 +248,13 @@ public:
 	std::vector<float>& GetUniformity();
 	std::vector<std::vector<float>>& GetMetrics();
 
+private:
 	unsigned int index(unsigned int i, unsigned int j);
+	void FindROI(float threshold);
+	void FindSR(float threshold);
+	void InitCompute();
+	void PrepareResults();
+	char stage=0;
 };
 
 #endif /* ALGORITHM_H_ */
