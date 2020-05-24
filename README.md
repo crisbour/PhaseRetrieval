@@ -38,6 +38,12 @@ Note that by far the most computational expensive tasks are the FFT and IFFT blo
 
 <img src="https://github.com/cristi-bourceanu/PhaseRetrieval/blob/master/CUDA%20Implementation/Data/Figures/Efficiency.png" width="60%">
 
+### Test Pattern
+Let us consider a ring to visualize the reconstruction done by the methods presented above.
+
+| GS | WGS | MRAF_SR | MRAF_ROI | UCMRAF|
+|:---:|:---:|:---:|:---:|:---:|
+| ![]() | ![]() | ![]() | ![]() | ![]() |
 
 ### Features:
 1. Image
