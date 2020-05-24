@@ -47,7 +47,11 @@ Let us consider a ring to visualize the reconstruction done by the methods prese
 
 | GS | MRAF_SR | MRAF_ROI|
 |:---:|:---:|:---:|
-| ![]() | ![]() | ![]() |
+| ![](https://github.com/cristi-bourceanu/PhaseRetrieval/blob/master/CUDA%20Implementation/Data/Slice/GS.png) | ![](https://github.com/cristi-bourceanu/PhaseRetrieval/blob/master/CUDA%20Implementation/Data/Slice/MRAF_SR.png) | ![](https://github.com/cristi-bourceanu/PhaseRetrieval/blob/master/CUDA%20Implementation/Data/Slice/MRAF_ROI.png) |
+
+| WGS | UCMRAF |
+|:----:|:----:|
+| ![](https://github.com/cristi-bourceanu/PhaseRetrieval/blob/master/CUDA%20Implementation/Data/Slice/WGS.png) | ![](https://github.com/cristi-bourceanu/PhaseRetrieval/blob/master/CUDA%20Implementation/Data/Slice/UCMRAF.png) |
 
 ### Features:
 1. Image
