@@ -14,18 +14,32 @@
 #include "display.h"
 #include "algorithm.h"
 
-void printData(const char* data_name,std::vector<std::vector<float>>data){
+void printMetrics(const char* data_name,std::vector<std::vector<float>>data){
 	FILE *File;
 	char filePath[100]="../Data/";
 	strcat(filePath,data_name); strcat(filePath,".txt");
 	printf("Print data to %s\n",filePath);
 	File=fopen(filePath,"w+");
 	fprintf(File,"%u\n",data[0].size());
-	fprintf(File,"Uniformity,Accuracy,Efficiency\n");
+	fprintf(File,"Uniformity,RMS Error,Efficiency\n");
 	for(unsigned int i=0;i<data[0].size();i++){
 		fprintf(File,"%f,%f,%f\n",data[0][i],data[1][i],data[2][i]);
 	}
 
+}
+
+void printSlice(PhaseRetrieve &reconst){
+	const char *data_name=reconst.GetName();
+	float *gray_image=reconst.GetImage();
+	int nx=500,ny=500;
+	FILE *File;
+	char filePath[100]="../Data/Slice/";
+	strcat(filePath,data_name); strcat(filePath,".txt");
+	printf("Print data to %s\n",filePath);
+	File=fopen(filePath,"w+");
+	fprintf(File,"%u\n",nx);
+	for(int i=0;i<nx;i++)
+		fprintf(File,"%f\n",gray_image[i+nx*(ny/2)]/255.0);
 }
 int main(int argc, char **argv){
 	// Square square1(desired,10,10);
@@ -35,9 +49,16 @@ int main(int argc, char **argv){
 	int spacing=10;
 	int nx_ny=10;
 	ImagePR_Interface *desired;
-	if(argc==2)
+	if(argc==2)							//Read image
 		desired= new ImagePR(argv[1]);
-	else{
+	else if(argc==3){					//Create ring with outter radius argv[1] amd inner radius arv[2]
+		desired= new ImagePR(500,500);
+		Circle circle(*desired,atoi(argv[1]));
+		Circle erase_circle(*desired,atoi(argv[2]));
+		circle.Draw(-1,-1);
+		erase_circle.Draw(-1,-1);
+	}
+	else{								//Create multi foci points mesh
 		desired= new ImagePR(500,500); 
 		Square spot(*desired,10,10);
 		MeshPattern pattern(*desired,nx_ny,spacing,spot);
@@ -48,7 +69,7 @@ int main(int argc, char **argv){
 	illumination.MakeGaussian((desired->GetWidth()-1)/2.0,(desired->GetHeight()-1)/2.0,10000.,10000.);
 
 	printf("(Width,Height)=(%d,%d)\n",desired->GetWidth(),desired->GetHeight());
-	PhaseRetrieve transfs(desired->GetGray(),desired->GetWidth(),desired->GetHeight(),Weighted_GS);
+	PhaseRetrieve transfs(desired->GetGray(),desired->GetWidth(),desired->GetHeight(),UCMRAF);
 	transfs.SetIllumination(illumination.GetGray());
 	
 	//transfs.SetROI(249.5,249.5,150);		//If ROI is not set specifically, SR will be used by default
@@ -61,7 +82,8 @@ int main(int argc, char **argv){
 	printf("Elapse time: %f milliseconds\n",std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000.0);
 
 	printf("%s\n",transfs.GetName());
-	printData(transfs.GetName(),transfs.GetMetrics());
+	printMetrics(transfs.GetName(),transfs.GetMetrics());
+	printSlice(transfs);
 
 	ImagePR ROI_mask(desired->GetWidth(),desired->GetHeight());
 	ROI_mask.SetGray(transfs.GetROIMask());

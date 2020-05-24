@@ -90,11 +90,15 @@ void ImagePR::MakeGaussian(float x_0,float y_0,float var_x, float var_y){
             gray_array[y*width+x]=val;
         }
 }
-void ImagePR::SetPixel(int x, int y){
+void ImagePR::SetPixel(int x, int y, int value){
     cv::Vec3b & color = image.at<cv::Vec3b>(cv::Point(x,y));
     unsigned char & colorG = gray_image.at<unsigned char>(cv::Point(x,y));
-    colorG=color[2]=color[1]=color[0]=255;
-    gray_array[y*width+x]=255;
+    colorG=color[2]=color[1]=color[0]=255*value;
+    gray_array[y*width+x]=255*value;
+}
+
+unsigned char ImagePR::GetPixel(int x, int y){
+    return (unsigned char)gray_array[y*width+x];
 }
 
 void ImagePR::show(const char *title){
@@ -105,4 +109,59 @@ void ImagePR::show(const char *title){
     printf("%s writing path is: %s\n",title,buffer);
     cv::imwrite(buffer,im_color);
     cv::imshow(title, im_color);
+}
+
+
+
+
+
+
+
+// *****************  DRAWING *********************//
+
+void Circle::Draw(int x, int y){
+	char *not_checked;
+    float x_C,y_C;
+    int nx=image.GetWidth();
+    int ny=image.GetHeight();
+	not_checked=new char[nx*ny];
+	for(int i=0;i<nx*ny;i++)
+		not_checked[i]=1;
+	std::queue<int> queuex;
+	std::queue<int> queuey;
+    if(x<0 || y_C<0){
+        x_C=(image.GetWidth()-1)/2.0;
+        y_C=(image.GetHeight()-1)/2.0;
+    }
+    else
+    {
+        x_C=x; y_C=y;
+    }
+	int x_pix=floor(x_C); int y_pix=floor(y_C);
+
+	if(pow(x_pix-x_C,2)+pow(y_pix-y_C,2)<=radius*radius){
+		not_checked[x_pix+y_pix*nx]=0;
+		queuex.push(x_pix);
+		queuey.push(y_pix);
+	}
+	int posx[]={-1,0,1,-1,1,-1,0,1};
+	int posy[]={-1,-1,-1,0,0,1,1,1};
+	while(!queuex.empty()&&!queuey.empty()){
+		x_pix=queuex.front(); 
+		y_pix=queuey.front(); 
+		queuex.pop();
+		queuey.pop();
+        if(image.GetPixel(x_pix,y_pix))
+            image.ErasePixel(x_pix,y_pix);
+        else
+            image.SetPixel(x_pix,y_pix);
+		for(int i=0;i<8;i++)
+			if(pow(x_pix+posx[i]-x_C,2)+pow(y_pix+posy[i]-y_C,2)<=radius*radius && not_checked[x_pix+posx[i]+(y_pix+posy[i])*nx]){
+				not_checked[x_pix+posx[i]+(y_pix+posy[i])*nx]=0;
+				queuex.push(x_pix+posx[i]);
+				queuey.push(y_pix+posy[i]);
+			}
+				
+	}
+	delete[] not_checked;
 }

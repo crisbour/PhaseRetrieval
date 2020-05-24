@@ -21,7 +21,9 @@ public:
     virtual void MakeGaussian(float x_0,float y_0,float var_x, float var_y)=0;
     virtual int GetWidth()const{return width;};
     virtual int GetHeight()const{return height;};
-    virtual void SetPixel(int x, int y)=0;
+    virtual void SetPixel(int x, int y, int value=1)=0;
+    virtual void ErasePixel(int x, int y, int value=1){SetPixel(x,y,0);};
+    virtual unsigned char GetPixel(int x, int y)=0;
     virtual void show(const char *title)=0;
 };
 class ImagePR:public ImagePR_Interface
@@ -41,7 +43,8 @@ public:
     void MakeGaussian(float x_0,float y_0,float var_x, float var_y);
     int GetWidth()const{return width;};
     int GetHeight()const{return height;};
-    void SetPixel(int x, int y);
+    void SetPixel(int x, int y, int value=1);
+    unsigned char GetPixel(int x, int y);
     void show(const char *title);
 };
 
@@ -51,6 +54,18 @@ public:
     virtual int Width()=0;
     virtual int Height()=0;
     virtual void Draw(int x, int y)=0;
+};
+
+class Circle:public Drawing{
+protected:
+    ImagePR_Interface &image;
+    float radius;
+public:
+    Circle(ImagePR_Interface &image, int radius):image(image),radius(radius){};
+    ~Circle(){};
+    int Width(){return 2* (int)radius;}
+    int Height(){return 2* (int)radius;}
+    void Draw(int x, int y);
 };
 
 class Square:public Drawing{
