@@ -45,6 +45,10 @@ Let us consider a ring to visualize the reconstruction done by the methods prese
 |:---:|:---:|:---:|:---:|:---:|
 | ![](https://github.com/cristi-bourceanu/PhaseRetrieval/blob/master/CUDA%20Implementation/Data/Rings/GS.png) | ![](https://github.com/cristi-bourceanu/PhaseRetrieval/blob/master/CUDA%20Implementation/Data/Rings/WGS.png) | ![](https://github.com/cristi-bourceanu/PhaseRetrieval/blob/master/CUDA%20Implementation/Data/Rings/MRAF_SR.png) | ![](https://github.com/cristi-bourceanu/PhaseRetrieval/blob/master/CUDA%20Implementation/Data/Rings/MRAF_ROI.png) | ![](https://github.com/cristi-bourceanu/PhaseRetrieval/blob/master/CUDA%20Implementation/Data/Rings/UCMRAF.png) |
 
+| GS | MRAF_SR | MRAF_ROI|
+|:---:|:---:|:---:|
+| ![]() | ![]() | ![]() |
+
 ### Features:
 1. Image
 - Image Creation:
