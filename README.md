@@ -32,9 +32,9 @@ Note that by far the most computational expensive tasks are the FFT and IFFT blo
  
 ### Methods compared
 
-<img src="https://github.com/cristi-bourceanu/PhaseRetrieval/blob/master/CUDA%20Implementation/Data/Figures/Uniformity.png" width="45%" />  <img src="https://github.com/cristi-bourceanu/PhaseRetrieval/blob/master/CUDA%20Implementation/Data/Figures/Accuracy.png" width="45%" />
+<img src="https://github.com/cristi-bourceanu/PhaseRetrieval/blob/master/CUDA%20Implementation/Data/Figures/Uniformity.png" width="48%" />  <img src="https://github.com/cristi-bourceanu/PhaseRetrieval/blob/master/CUDA%20Implementation/Data/Figures/Accuracy.png" width="48%" />
 
-<img src="https://github.com/cristi-bourceanu/PhaseRetrieval/blob/master/CUDA%20Implementation/Data/Figures/Efficiency.png" width="60%">
+<img src="https://github.com/cristi-bourceanu/PhaseRetrieval/blob/master/CUDA%20Implementation/Data/Figures/Efficiency.png" width="48%">
 
 ### Test Pattern
 Let us consider a ring to visualize the reconstruction done by the methods presented above.
