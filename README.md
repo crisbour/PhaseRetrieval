@@ -31,7 +31,9 @@ Note that by far the most computational expensive tasks are the FFT and IFFT blo
  A new phase retrieval algorithm has been introduced here. This is an improvement of the MRAF by allowing optimisation of the parameter from MRAF feedback equation.
  
 ### Methods compared
+<p float="left>
 <img src="https://github.com/cristi-bourceanu/PhaseRetrieval/blob/master/CUDA%20Implementation/Data/Figures/Uniformity.png" width="60%"> <img src="https://github.com/cristi-bourceanu/PhaseRetrieval/blob/master/CUDA%20Implementation/Data/Figures/Accuracy.png" width="60%">
+</p>
 
 <img src="https://github.com/cristi-bourceanu/PhaseRetrieval/blob/master/CUDA%20Implementation/Data/Figures/Efficiency.png" width="60%">
 
